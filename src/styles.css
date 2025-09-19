@@ -1,1 +1,18 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global baseline */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: transparent;
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
