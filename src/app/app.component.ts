@@ -37,7 +37,45 @@ export class AppComponent {
   private readonly maxEndMinutes = 21 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
 
-  readonly confettiPieces = Array.from({ length: 14 }, (_, index) => index);
+  readonly confettiPieces: { left: number; delay: number; duration: number }[] = [
+    { left: 6, delay: -0.2, duration: 2.6 },
+    { left: 14, delay: -0.6, duration: 2.8 },
+    { left: 22, delay: -1, duration: 2.5 },
+    { left: 30, delay: -0.4, duration: 2.7 },
+    { left: 38, delay: -0.9, duration: 2.3 },
+    { left: 46, delay: -0.3, duration: 2.6 },
+    { left: 54, delay: -0.7, duration: 2.9 },
+    { left: 62, delay: -1.1, duration: 2.4 },
+    { left: 70, delay: -0.5, duration: 2.8 },
+    { left: 78, delay: -0.95, duration: 2.5 },
+    { left: 86, delay: -0.35, duration: 2.6 },
+    { left: 94, delay: -0.8, duration: 2.2 },
+    { left: 2, delay: -1.25, duration: 2.7 },
+    { left: 98, delay: -0.55, duration: 2.3 },
+    { left: 10, delay: -1.35, duration: 2.1 },
+    { left: 26, delay: -0.85, duration: 2.9 },
+    { left: 42, delay: -1.6, duration: 2.4 },
+    { left: 58, delay: -0.45, duration: 2.2 },
+    { left: 74, delay: -1.05, duration: 2.6 },
+    { left: 88, delay: -1.45, duration: 2.8 },
+  ];
+
+  readonly sparkles: { top: number; left: number; delay: number; duration: number }[] = [
+    { top: 18, left: 28, delay: 0, duration: 2.8 },
+    { top: 10, left: 52, delay: 0.4, duration: 3 },
+    { top: 24, left: 76, delay: 0.8, duration: 2.6 },
+    { top: 38, left: 18, delay: 1.2, duration: 3.2 },
+    { top: 48, left: 48, delay: 1.6, duration: 2.7 },
+    { top: 62, left: 22, delay: 0.6, duration: 3.1 },
+    { top: 58, left: 72, delay: 1, duration: 2.9 },
+    { top: 32, left: 58, delay: 1.4, duration: 3.3 },
+    { top: 76, left: 42, delay: 2, duration: 2.8 },
+    { top: 68, left: 82, delay: 2.4, duration: 3.1 },
+    { top: 12, left: 16, delay: 2.8, duration: 2.9 },
+    { top: 84, left: 18, delay: 1.8, duration: 3.4 },
+    { top: 86, left: 64, delay: 0.2, duration: 3 },
+    { top: 44, left: 86, delay: 0.95, duration: 2.7 },
+  ];
 
   readonly dayNames: Record<number, string> = {
     0: 'Niedziela',

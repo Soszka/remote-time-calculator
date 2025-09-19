@@ -8,23 +8,43 @@
         <input
           id="start-time"
           type="text"
-          inputmode="numeric"
+          inputmode="text"
           placeholder="np. 8.43"
           formControlName="startTime"
         />
-        <span class="error" *ngIf="form.controls.startTime.touched && form.controls.startTime.hasError('required')">
+        <span
+          class="error"
+          *ngIf="
+            form.controls.startTime.touched &&
+            form.controls.startTime.hasError('required')
+          "
+        >
           Wpisz godzinę rozpoczęcia.
         </span>
-        <span class="error" *ngIf="form.controls.startTime.touched && form.controls.startTime.hasError('invalidTime')">
+        <span
+          class="error"
+          *ngIf="
+            form.controls.startTime.touched &&
+            form.controls.startTime.hasError('invalidTime')
+          "
+        >
           Niepoprawny format godziny.
         </span>
-        <span class="error" *ngIf="form.controls.startTime.touched && form.controls.startTime.hasError('tooEarly')">
+        <span
+          class="error"
+          *ngIf="
+            form.controls.startTime.touched &&
+            form.controls.startTime.hasError('tooEarly')
+          "
+        >
           Start pracy nie może być wcześniejszy niż 05:30.
         </span>
       </div>
 
       <div class="breaks-controls">
-        <button type="button" class="ghost-button" (click)="addBreak()">+ Przerwa</button>
+        <button type="button" class="ghost-button" (click)="addBreak()">
+          + Przerwa
+        </button>
       </div>
 
       <div class="breaks-wrapper" formArrayName="breaks">
@@ -33,7 +53,11 @@
         <div class="breaks" *ngIf="breaks.length > 0">
           <div
             class="break-row"
-            *ngFor="let breakGroup of breaks.controls; let i = index; trackBy: trackByIndex"
+            *ngFor="
+              let breakGroup of breaks.controls;
+              let i = index;
+              trackBy: trackByIndex
+            "
             [formGroupName]="i"
           >
             <div class="form-row inline">
@@ -41,11 +65,17 @@
               <input
                 [id]="'break-start-' + i"
                 type="text"
-                inputmode="numeric"
+                inputmode="text"
                 placeholder="np. 12.00"
                 formControlName="start"
               />
-              <span class="error" *ngIf="breakGroup.controls.start.touched && breakGroup.controls.start.hasError('invalidTime')">
+              <span
+                class="error"
+                *ngIf="
+                  breakGroup.controls.start.touched &&
+                  breakGroup.controls.start.hasError('invalidTime')
+                "
+              >
                 Niepoprawna godzina.
               </span>
             </div>
@@ -55,55 +85,113 @@
               <input
                 [id]="'break-end-' + i"
                 type="text"
-                inputmode="numeric"
+                inputmode="text"
                 placeholder="np. 12.30"
                 formControlName="end"
               />
-              <span class="error" *ngIf="breakGroup.controls.end.touched && breakGroup.controls.end.hasError('invalidTime')">
+              <span
+                class="error"
+                *ngIf="
+                  breakGroup.controls.end.touched &&
+                  breakGroup.controls.end.hasError('invalidTime')
+                "
+              >
                 Niepoprawna godzina.
               </span>
             </div>
 
-            <button type="button" class="remove-button" (click)="removeBreak(i)" aria-label="Usuń przerwę">
+            <button
+              type="button"
+              class="remove-button"
+              (click)="removeBreak(i)"
+              aria-label="Usuń przerwę"
+            >
               ✖
             </button>
 
-            <div class="error break-warning" *ngIf="hasIncompleteBreak(breakGroup)">
+            <div
+              class="error break-warning"
+              *ngIf="hasIncompleteBreak(breakGroup)"
+            >
               Uzupełnij obie godziny.
             </div>
           </div>
         </div>
       </div>
 
-      <button type="button" class="primary-button" (click)="calculate()" [disabled]="!canCalculate">
+      <button
+        type="button"
+        class="primary-button"
+        (click)="calculate()"
+        [disabled]="!canCalculate"
+      >
         Przelicz
       </button>
 
-      <div class="schedule-error" *ngIf="scheduleError() as error">{{ error }}</div>
+      <div class="schedule-error" *ngIf="scheduleError() as error">
+        {{ error }}
+      </div>
     </form>
 
     <section *ngIf="result() as payload" class="result-block">
-      <div class="card highlight-card fade-in" [class.complete]="payload.state === 'complete'">
-        <div class="celebration" *ngIf="payload.state === 'complete'" aria-hidden="true">
+      <div
+        class="card highlight-card fade-in"
+        [class.complete]="payload.state === 'complete'"
+      >
+        <div
+          class="celebration"
+          *ngIf="payload.state === 'complete'"
+          aria-hidden="true"
+        >
+          <div class="energy-rings">
+            <span class="ring"></span>
+            <span class="ring delay"></span>
+            <span class="ring subtle"></span>
+          </div>
           <div class="confetti">
-            <span *ngFor="let piece of confettiPieces; trackBy: trackByIndex"></span>
+            <span
+              *ngFor="
+                let piece of confettiPieces;
+                let i = index;
+                trackBy: trackByIndex
+              "
+              [style.left.%]="piece.left"
+              [style.animationDelay]="piece.delay + 's'"
+              [style.animationDuration]="piece.duration + 's'"
+              [class.flip]="i % 3 === 0"
+            ></span>
           </div>
           <div class="fireworks">
             <span></span>
             <span></span>
             <span></span>
+            <span></span>
           </div>
+          <div class="sparkles">
+            <span
+              *ngFor="
+                let sparkle of sparkles;
+                let i = index;
+                trackBy: trackByIndex
+              "
+              [style.top.%]="sparkle.top"
+              [style.left.%]="sparkle.left"
+              [style.animationDelay]="sparkle.delay + 's'"
+              [style.animationDuration]="sparkle.duration + 's'"
+              [class.alt]="i % 2 === 0"
+            ></span>
+          </div>
+          <div class="comet comet-left"></div>
+          <div class="comet comet-right"></div>
         </div>
         <div class="summary-line">
           <div class="metric metric-primary">
-            <span class="metric-icon">🚪</span>
             <span class="metric-text">
               <span class="metric-label">Wyjście o</span>
               <span class="metric-value">{{ payload.endTime }}</span>
             </span>
           </div>
           <div class="metric metric-secondary">
-            <span class="metric-icon">⏳</span>
             <span class="metric-text">
               <span class="metric-label">Czas do końca</span>
               <span class="metric-value">{{ payload.remainingLabel }}</span>
