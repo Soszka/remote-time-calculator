@@ -15,10 +15,13 @@ interface BreakFormGroup extends FormGroup<{
   end: FormControl<string | null>;
 }> {}
 
+type ResultState = 'beforeStart' | 'inProgress' | 'complete';
+
 interface ResultPayload {
   endTime: string;
   remainingLabel: string;
   message: string;
+  state: ResultState;
 }
 
 @Component({
@@ -31,8 +34,10 @@ interface ResultPayload {
 export class AppComponent {
   private readonly baseMinutes = 8 * 60 + 15;
   private readonly minStartMinutes = 5 * 60 + 30;
-  private readonly maxEndMinutes = 20 * 60;
+  private readonly maxEndMinutes = 21 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
+
+  readonly confettiPieces = Array.from({ length: 14 }, (_, index) => index);
 
   readonly dayNames: Record<number, string> = {
     0: 'Niedziela',
@@ -197,6 +202,20 @@ export class AppComponent {
     },
   };
 
+  private readonly beforeStartMessages: string[] = [
+    '„{day} czeka spokojnie do {start}, a Ty już kombinujesz jak się z tego wymigać.”',
+    '„Jeszcze nie wystartowałeś – {day} dopiero zapina klamrę o {start}. Może kawka na odwagę?”',
+    '„{day} stoi w blokach startowych do {start}, więc masz chwilę, by mentalnie pożegnać wolność.”',
+    '„Plan jest prosty: {start} i udajesz, że jesteś gotowy. {day} już wie, że to ściema.”',
+  ];
+
+  private readonly afterWorkMessages: string[] = [
+    '„{day} odhaczone – wyszedłeś o {end}. Teraz Twoim projektem jest leżenie i nicnierobienie.”',
+    '„{end} i po sprawie. {day} właśnie wręczył Ci certyfikat z kategorii ‘przeżył i nie zwariował’.”',
+    '„{day} skończony o {end}. Idź świętować, zanim ktoś przypomni Ci o jutrzejszym stand-upie.”',
+    '„{day} zamknięty o {end}. Możesz oficjalnie włączyć tryb kanapa i ignorowanie telefonów.”',
+  ];
+
   private readonly timeValidatorFn = (
     control: AbstractControl<string | null>
   ): ValidationErrors | null => {
@@ -301,24 +320,39 @@ export class AppComponent {
 
     this.scheduleError.set(null);
 
-    const totalMinutes = ((scheduleCheck.totalEndMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const rawEndMinutes = scheduleCheck.totalEndMinutes;
+    const totalMinutes = ((rawEndMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
 
+    const startLabel = this.formatMinutes(startMinutes);
     const endTimeLabel = this.formatMinutes(totalMinutes);
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    let diffMinutes = totalMinutes - nowMinutes;
+    const beforeStart = nowMinutes < startMinutes;
+    const workFinished = nowMinutes >= rawEndMinutes;
+
+    let state: ResultState = 'inProgress';
+    let diffMinutes = rawEndMinutes - nowMinutes;
+
+    if (workFinished) {
+      diffMinutes = 0;
+      state = 'complete';
+    } else if (beforeStart) {
+      state = 'beforeStart';
+    }
+
     if (diffMinutes < 0) {
       diffMinutes = 0;
     }
 
     const remainingLabel = this.formatRemaining(diffMinutes);
     const dayName = this.dayNames[now.getDay()];
-    const message = this.pickMessage(dayName, remainingLabel, diffMinutes);
+    const message = this.pickMessage(dayName, remainingLabel, diffMinutes, state, startLabel, endTimeLabel);
 
     this.result.set({
       endTime: endTimeLabel,
       remainingLabel,
       message,
+      state,
     });
   }
 
@@ -379,7 +413,6 @@ export class AppComponent {
       .filter((value): value is { start: number; end: number } => value !== null)
       .sort((a, b) => a.start - b.start);
 
-    const baseEnd = startMinutes + this.baseMinutes;
     let previousEnd = startMinutes;
     let totalBreakMinutes = 0;
 
@@ -405,10 +438,10 @@ export class AppComponent {
         };
       }
 
-      if (interval.end > baseEnd) {
+      if (interval.start > this.maxEndMinutes || interval.end > this.maxEndMinutes) {
         return {
           totalEndMinutes: startMinutes,
-          error: 'Przerwy muszą zakończyć się przed końcem dnia pracy (8 h 15 min od startu).',
+          error: 'Cały plan musi zmieścić się maksymalnie do 21:00.',
         };
       }
 
@@ -421,14 +454,29 @@ export class AppComponent {
     if (totalEndMinutes > this.maxEndMinutes) {
       return {
         totalEndMinutes,
-        error: 'Koniec pracy wypada po 20:00. Skróć przerwy albo zacznij wcześniej.',
+        error: 'Koniec pracy wypada po 21:00. Skróć przerwy albo zacznij wcześniej.',
       };
     }
 
     return { totalEndMinutes, error: null };
   }
 
-  private pickMessage(dayName: string, remainingLabel: string, diffMinutes: number): string {
+  private pickMessage(
+    dayName: string,
+    remainingLabel: string,
+    diffMinutes: number,
+    state: ResultState,
+    startLabel: string,
+    endLabel: string,
+  ): string {
+    if (state === 'beforeStart') {
+      return this.resolveTemplate(this.beforeStartMessages, dayName, remainingLabel, startLabel, endLabel);
+    }
+
+    if (state === 'complete') {
+      return this.resolveTemplate(this.afterWorkMessages, dayName, remainingLabel, startLabel, endLabel);
+    }
+
     const range: 'red' | 'orange' | 'yellow' | 'green' = diffMinutes > 360
       ? 'red'
       : diffMinutes > 240
@@ -439,11 +487,32 @@ export class AppComponent {
 
     const messageDay = this.messageSets[dayName] ? dayName : 'Poniedziałek';
     const templates = this.messageSets[messageDay][range];
-    const template = templates[Math.floor(Math.random() * templates.length)];
+    return this.resolveTemplate(templates, dayName, remainingLabel, startLabel, endLabel);
+  }
 
+  private resolveTemplate(
+    templates: string[],
+    dayName: string,
+    remainingLabel: string,
+    startLabel: string,
+    endLabel: string,
+  ): string {
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return this.formatTemplate(template, dayName, remainingLabel, startLabel, endLabel);
+  }
+
+  private formatTemplate(
+    template: string,
+    dayName: string,
+    remainingLabel: string,
+    startLabel: string,
+    endLabel: string,
+  ): string {
     return template
       .replaceAll('{time}', remainingLabel)
       .replaceAll('{day}', dayName)
+      .replaceAll('{start}', startLabel)
+      .replaceAll('{end}', endLabel)
       .replace(/[„”]/g, '')
       .trim();
   }

@@ -83,17 +83,31 @@
     </form>
 
     <section *ngIf="result() as payload" class="result-block">
-      <div class="card highlight-card fade-in">
-        <div class="summary-line">
-          <div class="metric">
-            <span class="metric-icon">🚪</span>
-            <span class="metric-label">Wyjście o</span>
-            <span class="metric-value">{{ payload.endTime }}</span>
+      <div class="card highlight-card fade-in" [class.complete]="payload.state === 'complete'">
+        <div class="celebration" *ngIf="payload.state === 'complete'" aria-hidden="true">
+          <div class="confetti">
+            <span *ngFor="let piece of confettiPieces; trackBy: trackByIndex"></span>
           </div>
-          <div class="metric">
+          <div class="fireworks">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+        <div class="summary-line">
+          <div class="metric metric-primary">
+            <span class="metric-icon">🚪</span>
+            <span class="metric-text">
+              <span class="metric-label">Wyjście o</span>
+              <span class="metric-value">{{ payload.endTime }}</span>
+            </span>
+          </div>
+          <div class="metric metric-secondary">
             <span class="metric-icon">⏳</span>
-            <span class="metric-label">Czas do końca</span>
-            <span class="metric-value">{{ payload.remainingLabel }}</span>
+            <span class="metric-text">
+              <span class="metric-label">Czas do końca</span>
+              <span class="metric-value">{{ payload.remainingLabel }}</span>
+            </span>
           </div>
         </div>
       </div>

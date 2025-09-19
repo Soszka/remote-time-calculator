@@ -14,16 +14,10 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'kalkulator-czasu-zdalnej' title`, () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app.title).toEqual('kalkulator-czasu-zdalnej');
-  });
-
-  it('should render title', () => {
+  it('should render heading', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, kalkulator-czasu-zdalnej');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Kalkulator końca pracy');
   });
 });
