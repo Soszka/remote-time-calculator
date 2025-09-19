@@ -10,13 +10,6 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import {
-  animate,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
-
 interface BreakFormGroup extends FormGroup<{
   start: FormControl<string | null>;
   end: FormControl<string | null>;
@@ -34,22 +27,11 @@ interface ResultPayload {
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
-  animations: [
-    trigger('fadeSlide', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(12px)' }),
-        animate('280ms ease-out',
-          style({ opacity: 1, transform: 'translateY(0)' }))
-      ]),
-      transition(':leave', [
-        animate('200ms ease-in',
-          style({ opacity: 0, transform: 'translateY(10px)' }))
-      ]),
-    ]),
-  ],
 })
 export class AppComponent {
   private readonly baseMinutes = 8 * 60 + 15;
+  private readonly minStartMinutes = 5 * 60 + 30;
+  private readonly maxEndMinutes = 20 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
 
   readonly dayNames: Record<number, string> = {
@@ -237,20 +219,45 @@ export class AppComponent {
     return this.isTimeValid(value) ? null : { invalidTime: true };
   };
 
+  private readonly startTimeValidatorFn = (
+    control: AbstractControl<string | null>
+  ): ValidationErrors | null => {
+    const baseValidation = this.timeValidatorFn(control);
+    if (baseValidation) {
+      return baseValidation;
+    }
+
+    const value = control.value;
+    const minutes = this.parseTime(value);
+    if (minutes === null) {
+      return { invalidTime: true };
+    }
+
+    if (minutes < this.minStartMinutes) {
+      return { tooEarly: true };
+    }
+
+    return null;
+  };
+
   readonly form = this.fb.group({
-    startTime: ['', [Validators.required, this.timeValidatorFn]],
+    startTime: ['', [Validators.required, this.startTimeValidatorFn]],
     breaks: this.fb.array<BreakFormGroup>([]),
   });
 
   readonly result = signal<ResultPayload | null>(null);
+  readonly scheduleError = signal<string | null>(null);
 
-  constructor(private readonly fb: FormBuilder) {}
+  constructor(private readonly fb: FormBuilder) {
+    this.form.valueChanges.subscribe(() => this.scheduleError.set(null));
+  }
 
   get breaks(): FormArray<BreakFormGroup> {
     return this.form.controls.breaks;
   }
 
   addBreak(): void {
+    this.scheduleError.set(null);
     this.breaks.push(
       this.fb.group({
         start: this.fb.control<string | null>(null, this.optionalTimeValidatorFn),
@@ -260,6 +267,7 @@ export class AppComponent {
   }
 
   removeBreak(index: number): void {
+    this.scheduleError.set(null);
     this.breaks.removeAt(index);
   }
 
@@ -284,17 +292,16 @@ export class AppComponent {
       return;
     }
 
-    let totalMinutes = startMinutes + this.baseMinutes;
-
-    for (const pause of this.breaks.controls) {
-      const startPause = this.parseTime(pause.controls.start.value);
-      const endPause = this.parseTime(pause.controls.end.value);
-      if (startPause !== null && endPause !== null) {
-        totalMinutes += Math.max(0, endPause - startPause);
-      }
+    const scheduleCheck = this.validateSchedule(startMinutes);
+    if (scheduleCheck.error) {
+      this.scheduleError.set(scheduleCheck.error);
+      this.result.set(null);
+      return;
     }
 
-    totalMinutes = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    this.scheduleError.set(null);
+
+    const totalMinutes = ((scheduleCheck.totalEndMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
 
     const endTimeLabel = this.formatMinutes(totalMinutes);
     const now = new Date();
@@ -352,6 +359,75 @@ export class AppComponent {
     return `${hours}h ${minutes}min`;
   }
 
+  private validateSchedule(startMinutes: number): { totalEndMinutes: number; error: string | null } {
+    if (startMinutes < this.minStartMinutes) {
+      return {
+        totalEndMinutes: startMinutes,
+        error: 'Start pracy nie może być wcześniejszy niż 05:30.',
+      };
+    }
+
+    const intervals = this.breaks.controls
+      .map((group) => {
+        const start = this.parseTime(group.controls.start.value);
+        const end = this.parseTime(group.controls.end.value);
+        if (start === null || end === null) {
+          return null;
+        }
+        return { start, end };
+      })
+      .filter((value): value is { start: number; end: number } => value !== null)
+      .sort((a, b) => a.start - b.start);
+
+    const baseEnd = startMinutes + this.baseMinutes;
+    let previousEnd = startMinutes;
+    let totalBreakMinutes = 0;
+
+    for (const interval of intervals) {
+      if (interval.start < startMinutes) {
+        return {
+          totalEndMinutes: startMinutes,
+          error: 'Przerwa nie może zaczynać się przed rozpoczęciem pracy.',
+        };
+      }
+
+      if (interval.start < previousEnd) {
+        return {
+          totalEndMinutes: startMinutes,
+          error: 'Przerwy nie mogą na siebie nachodzić ani zaczynać się w tych samych godzinach.',
+        };
+      }
+
+      if (interval.end <= interval.start) {
+        return {
+          totalEndMinutes: startMinutes,
+          error: 'Koniec przerwy musi być późniejszy niż jej początek.',
+        };
+      }
+
+      if (interval.end > baseEnd) {
+        return {
+          totalEndMinutes: startMinutes,
+          error: 'Przerwy muszą zakończyć się przed końcem dnia pracy (8 h 15 min od startu).',
+        };
+      }
+
+      totalBreakMinutes += interval.end - interval.start;
+      previousEnd = interval.end;
+    }
+
+    const totalEndMinutes = startMinutes + this.baseMinutes + totalBreakMinutes;
+
+    if (totalEndMinutes > this.maxEndMinutes) {
+      return {
+        totalEndMinutes,
+        error: 'Koniec pracy wypada po 20:00. Skróć przerwy albo zacznij wcześniej.',
+      };
+    }
+
+    return { totalEndMinutes, error: null };
+  }
+
   private pickMessage(dayName: string, remainingLabel: string, diffMinutes: number): string {
     const range: 'red' | 'orange' | 'yellow' | 'green' = diffMinutes > 360
       ? 'red'
@@ -367,6 +443,8 @@ export class AppComponent {
 
     return template
       .replaceAll('{time}', remainingLabel)
-      .replaceAll('{day}', dayName);
+      .replaceAll('{day}', dayName)
+      .replace(/[„”]/g, '')
+      .trim();
   }
 }
