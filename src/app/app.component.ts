@@ -401,9 +401,17 @@ export class AppComponent implements OnDestroy {
     }
 
     const diffMinutes = Math.ceil(diffSeconds / 60);
-    const remainingLabel = this.formatRemaining(diffSeconds);
+    const remainingLabel = this.formatRemainingLabel(diffSeconds);
+    const remainingForMessage = this.formatRemainingMessage(diffSeconds);
     const dayName = this.dayNames[now.getDay()];
-    const message = this.pickMessage(dayName, remainingLabel, diffMinutes, state, startLabel, endTimeLabel);
+    const message = this.pickMessage(
+      dayName,
+      remainingForMessage,
+      diffMinutes,
+      state,
+      startLabel,
+      endTimeLabel,
+    );
 
     this.result.set({
       endTime: endTimeLabel,
@@ -457,12 +465,27 @@ export class AppComponent implements OnDestroy {
       .padStart(2, '0')}`;
   }
 
-  private formatRemaining(diffSeconds: number): string {
-    const hours = Math.floor(diffSeconds / 3600);
-    const minutes = Math.floor((diffSeconds % 3600) / 60);
-    const seconds = diffSeconds % 60;
+  private splitDuration(diffSeconds: number): {
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } {
+    const safeSeconds = Math.max(0, diffSeconds);
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
 
+    return { hours, minutes, seconds };
+  }
+
+  private formatRemainingLabel(diffSeconds: number): string {
+    const { hours, minutes, seconds } = this.splitDuration(diffSeconds);
     return `${hours}h ${minutes}min ${seconds}s`;
+  }
+
+  private formatRemainingMessage(diffSeconds: number): string {
+    const { hours, minutes } = this.splitDuration(diffSeconds);
+    return `${hours}h ${minutes}min`;
   }
 
   private startCountdown(): void {
@@ -500,7 +523,7 @@ export class AppComponent implements OnDestroy {
           if (this.messageContext) {
             nextMessage = this.pickMessage(
               this.messageContext.dayName,
-              this.formatRemaining(diffSeconds),
+              this.formatRemainingMessage(diffSeconds),
               0,
               nextState,
               this.messageContext.startLabel,
@@ -512,7 +535,7 @@ export class AppComponent implements OnDestroy {
         return {
           ...current,
           state: nextState,
-          remainingLabel: this.formatRemaining(diffSeconds),
+          remainingLabel: this.formatRemainingLabel(diffSeconds),
           message: nextMessage,
         };
       });

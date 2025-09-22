@@ -39,7 +39,7 @@ h1 {
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.05rem;
+  gap: clamp(0.85rem, 2vw, 1rem);
 }
 
 .form-row {
@@ -88,7 +88,7 @@ input::placeholder {
   display: flex;
   justify-content: flex-end;
   margin-top: -0.5rem;
-  margin-bottom: -0.35rem;
+  margin-bottom: -0.6rem;
 }
 
 .ghost-button {
@@ -119,6 +119,7 @@ input::placeholder {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  margin-bottom: -0.2rem;
 }
 
 .breaks-title {
