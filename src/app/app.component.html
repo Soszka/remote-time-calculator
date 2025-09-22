@@ -9,7 +9,7 @@
           id="start-time"
           type="text"
           inputmode="numeric"
-          placeholder="np. 8.43"
+          placeholder="np. 8:43"
           formControlName="startTime"
         />
         <span class="error" *ngIf="form.controls.startTime.touched && form.controls.startTime.hasError('required')">
@@ -42,7 +42,6 @@
                 [id]="'break-start-' + i"
                 type="text"
                 inputmode="numeric"
-                placeholder="np. 12.00"
                 formControlName="start"
               />
               <span class="error" *ngIf="breakGroup.controls.start.touched && breakGroup.controls.start.hasError('invalidTime')">
@@ -56,7 +55,6 @@
                 [id]="'break-end-' + i"
                 type="text"
                 inputmode="numeric"
-                placeholder="np. 12.30"
                 formControlName="end"
               />
               <span class="error" *ngIf="breakGroup.controls.end.touched && breakGroup.controls.end.hasError('invalidTime')">
@@ -94,20 +92,16 @@
             <span></span>
           </div>
         </div>
-        <div class="summary-line">
-          <div class="metric metric-primary">
-            <span class="metric-icon">🚪</span>
-            <span class="metric-text">
-              <span class="metric-label">Wyjście o</span>
-              <span class="metric-value">{{ payload.endTime }}</span>
-            </span>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-icon" aria-hidden="true">🚪</span>
+            <span class="summary-label">Wyjście o</span>
+            <span class="summary-value">{{ payload.endTime }}</span>
           </div>
-          <div class="metric metric-secondary">
-            <span class="metric-icon">⏳</span>
-            <span class="metric-text">
-              <span class="metric-label">Czas do końca</span>
-              <span class="metric-value">{{ payload.remainingLabel }}</span>
-            </span>
+          <div class="summary-item">
+            <span class="summary-icon" aria-hidden="true">⏳</span>
+            <span class="summary-label">Czas do końca</span>
+            <span class="summary-value">{{ payload.remainingLabel }}</span>
           </div>
         </div>
       </div>

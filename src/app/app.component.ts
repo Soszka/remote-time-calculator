@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, OnDestroy, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -31,13 +31,16 @@ interface ResultPayload {
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   private readonly baseMinutes = 8 * 60 + 15;
   private readonly minStartMinutes = 5 * 60 + 30;
   private readonly maxEndMinutes = 21 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
 
   readonly confettiPieces = Array.from({ length: 14 }, (_, index) => index);
+
+  private countdownId: ReturnType<typeof setInterval> | null = null;
+  private activeSchedule: { startMinutes: number; endMinutes: number } | null = null;
 
   readonly dayNames: Record<number, string> = {
     0: 'Niedziela',
@@ -271,6 +274,10 @@ export class AppComponent {
     this.form.valueChanges.subscribe(() => this.scheduleError.set(null));
   }
 
+  ngOnDestroy(): void {
+    this.stopCountdown();
+  }
+
   get breaks(): FormArray<BreakFormGroup> {
     return this.form.controls.breaks;
   }
@@ -315,45 +322,24 @@ export class AppComponent {
     if (scheduleCheck.error) {
       this.scheduleError.set(scheduleCheck.error);
       this.result.set(null);
+      this.activeSchedule = null;
+      this.stopCountdown();
       return;
     }
 
     this.scheduleError.set(null);
+    this.activeSchedule = {
+      startMinutes,
+      endMinutes: scheduleCheck.totalEndMinutes,
+    };
 
-    const rawEndMinutes = scheduleCheck.totalEndMinutes;
-    const totalMinutes = ((rawEndMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    this.updateResultForSchedule(this.activeSchedule, { recomputeMessage: true });
 
-    const startLabel = this.formatMinutes(startMinutes);
-    const endTimeLabel = this.formatMinutes(totalMinutes);
-    const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    const beforeStart = nowMinutes < startMinutes;
-    const workFinished = nowMinutes >= rawEndMinutes;
-
-    let state: ResultState = 'inProgress';
-    let diffMinutes = rawEndMinutes - nowMinutes;
-
-    if (workFinished) {
-      diffMinutes = 0;
-      state = 'complete';
-    } else if (beforeStart) {
-      state = 'beforeStart';
+    if (this.result()?.state === 'complete') {
+      this.stopCountdown();
+    } else {
+      this.startCountdown();
     }
-
-    if (diffMinutes < 0) {
-      diffMinutes = 0;
-    }
-
-    const remainingLabel = this.formatRemaining(diffMinutes);
-    const dayName = this.dayNames[now.getDay()];
-    const message = this.pickMessage(dayName, remainingLabel, diffMinutes, state, startLabel, endTimeLabel);
-
-    this.result.set({
-      endTime: endTimeLabel,
-      remainingLabel,
-      message,
-      state,
-    });
   }
 
   trackByIndex(_index: number, _item: unknown): number {
@@ -380,17 +366,103 @@ export class AppComponent {
   }
 
   private formatMinutes(totalMinutes: number): string {
-    const hours = Math.floor(totalMinutes / 60) % 24;
-    const minutes = totalMinutes % 60;
-    return `${hours.toString().padStart(2, '0')}.${minutes
-      .toString()
-      .padStart(2, '0')}`;
+    const normalizedMinutes = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+    const hours = Math.floor(normalizedMinutes / 60) % 24;
+    const minutes = normalizedMinutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
 
-  private formatRemaining(diffMinutes: number): string {
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    return `${hours}h ${minutes}min`;
+  private formatRemaining(diffSeconds: number): string {
+    const safeSeconds = Math.max(0, diffSeconds);
+    if (safeSeconds === 0) {
+      return '0s';
+    }
+
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
+
+    const parts: string[] = [];
+    if (hours > 0) {
+      parts.push(`${hours}h`);
+    }
+    if (minutes > 0 || hours > 0) {
+      parts.push(`${minutes}min`);
+    }
+    parts.push(`${seconds}s`);
+    return parts.join(' ');
+  }
+
+  private startCountdown(): void {
+    this.stopCountdown();
+
+    if (!this.activeSchedule) {
+      return;
+    }
+
+    this.countdownId = setInterval(() => {
+      if (this.activeSchedule) {
+        this.updateResultForSchedule(this.activeSchedule);
+      }
+    }, 1000);
+  }
+
+  private stopCountdown(): void {
+    if (this.countdownId !== null) {
+      clearInterval(this.countdownId);
+      this.countdownId = null;
+    }
+  }
+
+  private updateResultForSchedule(
+    schedule: { startMinutes: number; endMinutes: number },
+    options: { recomputeMessage?: boolean } = {},
+  ): void {
+    const { recomputeMessage = false } = options;
+
+    const startLabel = this.formatMinutes(schedule.startMinutes);
+    const endTimeLabel = this.formatMinutes(schedule.endMinutes);
+    const now = new Date();
+    const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const startSeconds = schedule.startMinutes * 60;
+    const endSeconds = schedule.endMinutes * 60;
+
+    let diffSeconds = endSeconds - nowSeconds;
+    let state: ResultState = 'inProgress';
+
+    if (nowSeconds >= endSeconds) {
+      diffSeconds = 0;
+      state = 'complete';
+    } else if (nowSeconds < startSeconds) {
+      state = 'beforeStart';
+    }
+
+    if (diffSeconds < 0) {
+      diffSeconds = 0;
+    }
+
+    const remainingLabel = this.formatRemaining(diffSeconds);
+    const dayName = this.dayNames[now.getDay()];
+    const previousResult = this.result();
+    const minutesForMessage = Math.ceil(diffSeconds / 60);
+    const shouldRecomputeMessage =
+      recomputeMessage || !previousResult || previousResult.state !== state;
+
+    const message =
+      shouldRecomputeMessage || !previousResult
+        ? this.pickMessage(dayName, remainingLabel, minutesForMessage, state, startLabel, endTimeLabel)
+        : previousResult.message;
+
+    this.result.set({
+      endTime: endTimeLabel,
+      remainingLabel,
+      message,
+      state,
+    });
+
+    if (state === 'complete') {
+      this.stopCountdown();
+    }
   }
 
   private validateSchedule(startMinutes: number): { totalEndMinutes: number; error: string | null } {
