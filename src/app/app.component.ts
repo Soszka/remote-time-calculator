@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, OnDestroy, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -31,7 +31,7 @@ interface ResultPayload {
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   private readonly baseMinutes = 8 * 60 + 15;
   private readonly minStartMinutes = 5 * 60 + 30;
   private readonly maxEndMinutes = 21 * 60;
@@ -305,8 +305,20 @@ export class AppComponent {
   readonly result = signal<ResultPayload | null>(null);
   readonly scheduleError = signal<string | null>(null);
 
+  private countdownInterval: ReturnType<typeof setInterval> | null = null;
+  private countdownTargetSeconds: number | null = null;
+  private messageContext: {
+    dayName: string;
+    startLabel: string;
+    endLabel: string;
+  } | null = null;
+
   constructor(private readonly fb: FormBuilder) {
     this.form.valueChanges.subscribe(() => this.scheduleError.set(null));
+  }
+
+  ngOnDestroy(): void {
+    this.clearCountdown();
   }
 
   get breaks(): FormArray<BreakFormGroup> {
@@ -343,6 +355,10 @@ export class AppComponent {
       return;
     }
 
+    this.clearCountdown();
+    this.countdownTargetSeconds = null;
+    this.messageContext = null;
+
     const startValue = this.form.controls.startTime.value as string;
     const startMinutes = this.parseTime(startValue);
     if (startMinutes === null) {
@@ -364,25 +380,28 @@ export class AppComponent {
     const startLabel = this.formatMinutes(startMinutes);
     const endTimeLabel = this.formatMinutes(totalMinutes);
     const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    const beforeStart = nowMinutes < startMinutes;
-    const workFinished = nowMinutes >= rawEndMinutes;
+    const startSecondsTotal = startMinutes * 60;
+    const targetSecondsTotal = rawEndMinutes * 60;
+    const nowSecondsTotal =
+      now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const beforeStart = nowSecondsTotal < startSecondsTotal;
+    const workFinished = nowSecondsTotal >= targetSecondsTotal;
 
     let state: ResultState = 'inProgress';
-    let diffMinutes = rawEndMinutes - nowMinutes;
 
     if (workFinished) {
-      diffMinutes = 0;
       state = 'complete';
     } else if (beforeStart) {
       state = 'beforeStart';
     }
 
-    if (diffMinutes < 0) {
-      diffMinutes = 0;
+    let diffSeconds = targetSecondsTotal - nowSecondsTotal;
+    if (diffSeconds < 0 || workFinished) {
+      diffSeconds = 0;
     }
 
-    const remainingLabel = this.formatRemaining(diffMinutes);
+    const diffMinutes = Math.ceil(diffSeconds / 60);
+    const remainingLabel = this.formatRemaining(diffSeconds);
     const dayName = this.dayNames[now.getDay()];
     const message = this.pickMessage(dayName, remainingLabel, diffMinutes, state, startLabel, endTimeLabel);
 
@@ -392,6 +411,19 @@ export class AppComponent {
       message,
       state,
     });
+
+    this.messageContext = {
+      dayName,
+      startLabel,
+      endLabel: endTimeLabel,
+    };
+
+    if (workFinished) {
+      return;
+    }
+
+    this.countdownTargetSeconds = targetSecondsTotal;
+    this.startCountdown();
   }
 
   trackByIndex(_index: number, _item: unknown): number {
@@ -420,15 +452,83 @@ export class AppComponent {
   private formatMinutes(totalMinutes: number): string {
     const hours = Math.floor(totalMinutes / 60) % 24;
     const minutes = totalMinutes % 60;
-    return `${hours.toString().padStart(2, '0')}.${minutes
+    return `${hours.toString().padStart(2, '0')}:${minutes
       .toString()
       .padStart(2, '0')}`;
   }
 
-  private formatRemaining(diffMinutes: number): string {
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    return `${hours}h ${minutes}min`;
+  private formatRemaining(diffSeconds: number): string {
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    const seconds = diffSeconds % 60;
+
+    return `${hours}h ${minutes}min ${seconds}s`;
+  }
+
+  private startCountdown(): void {
+    if (this.countdownTargetSeconds === null) {
+      return;
+    }
+
+    this.countdownInterval = setInterval(() => {
+      const target = this.countdownTargetSeconds;
+      if (target === null) {
+        this.clearCountdown();
+        return;
+      }
+
+      const now = new Date();
+      const nowSecondsTotal =
+        now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      let diffSeconds = target - nowSecondsTotal;
+
+      if (diffSeconds <= 0) {
+        diffSeconds = 0;
+      }
+
+      this.result.update((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const shouldComplete = diffSeconds === 0;
+        let nextState = current.state;
+        let nextMessage = current.message;
+
+        if (shouldComplete && current.state !== 'complete') {
+          nextState = 'complete';
+          if (this.messageContext) {
+            nextMessage = this.pickMessage(
+              this.messageContext.dayName,
+              this.formatRemaining(diffSeconds),
+              0,
+              nextState,
+              this.messageContext.startLabel,
+              this.messageContext.endLabel,
+            );
+          }
+        }
+
+        return {
+          ...current,
+          state: nextState,
+          remainingLabel: this.formatRemaining(diffSeconds),
+          message: nextMessage,
+        };
+      });
+
+      if (diffSeconds === 0) {
+        this.countdownTargetSeconds = null;
+        this.clearCountdown();
+      }
+    }, 1000);
+  }
+
+  private clearCountdown(): void {
+    if (this.countdownInterval !== null) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
   }
 
   private validateSchedule(startMinutes: number): { totalEndMinutes: number; error: string | null } {

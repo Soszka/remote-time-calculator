@@ -233,8 +233,4 @@ input::placeholder {
   .remove-button {
     justify-self: end;
   }
-
-  .summary-line {
-    justify-content: flex-start;
-  }
 }

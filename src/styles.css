@@ -47,70 +47,52 @@ input {
 }
 
 .summary-line {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(0.6rem, 3vw, 0.85rem);
+  display: grid;
+  gap: clamp(0.8rem, 3vw, 1.2rem);
+  width: 100%;
 }
 
-.metric {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
+@media (min-width: 720px) {
+  .summary-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
 }
 
-.metric-icon {
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
+.summary-item {
+  display: grid;
+  gap: clamp(0.35rem, 2vw, 0.55rem);
+  justify-items: center;
+  text-align: center;
+  padding: clamp(0.75rem, 2.2vw, 1.05rem);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-.metric-primary .metric-icon {
-  font-size: clamp(1.6rem, 5vw, 2rem);
+.summary-icon {
+  font-size: clamp(2rem, 5vw, 2.6rem);
   line-height: 1;
-  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.28));
 }
 
-.metric-secondary .metric-icon {
-  font-size: clamp(1.6rem, 5vw, 2rem);
+.summary-content {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
 }
 
-.metric-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.metric-label {
-  opacity: 0.9;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+.summary-label {
   font-size: 0.85rem;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
 }
 
-.metric-value {
-  font-weight: 700;
-  letter-spacing: -0.015em;
-}
-
-.metric-primary .metric-label {
-  font-size: 0.95rem;
-  opacity: 0.95;
-  text-transform: none;
-  letter-spacing: 0.01em;
-}
-
-.metric-primary .metric-value {
-  font-size: clamp(2rem, 6vw, 2.75rem);
+.summary-value {
+  font-size: clamp(2.1rem, 6vw, 2.8rem);
   font-weight: 800;
-  line-height: 1.1;
-}
-
-.metric-secondary .metric-value {
-  font-size: clamp(1.05rem, 3.2vw, 1.45rem);
-}
-
-.metric-secondary .metric-label {
-  font-size: 0.8rem;
+  letter-spacing: -0.02em;
 }
 
 .highlight-card.complete::after {
