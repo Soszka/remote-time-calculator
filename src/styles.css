@@ -162,6 +162,16 @@ app-root.dark-mode .save-button:disabled:hover {
   box-shadow: none;
 }
 
+app-root .field-hint {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+app-root.dark-mode .field-hint {
+  color: #aeb8c8;
+}
+
 app-root .toast {
   position: fixed;
   right: clamp(1rem, 4vw, 2rem);

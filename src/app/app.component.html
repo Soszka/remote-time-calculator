@@ -413,7 +413,11 @@
               inputmode="numeric"
               placeholder="np. 7"
               formControlName="favoriteHour"
-              aria-describedby="favorite-hour-feedback"
+              [attr.aria-describedby]="
+                isInvalid(configForm.controls.favoriteHour)
+                  ? 'favorite-hour-feedback'
+                  : 'favorite-hour-hint'
+              "
             />
             <button
               type="button"
@@ -430,6 +434,13 @@
             *ngIf="isInvalid(configForm.controls.favoriteHour)"
           >
             Wpisz tylko pełną godzinę od 0 do 23, np. 7. Bez minut i dwukropka.
+          </span>
+          <span
+            id="favorite-hour-hint"
+            class="field-hint"
+            *ngIf="!isInvalid(configForm.controls.favoriteHour)"
+          >
+            Podaj samą godzinę, np. 7. Minuty dopiszesz później w polu startu pracy.
           </span>
         </div>
       </form>
