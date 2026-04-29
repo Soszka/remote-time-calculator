@@ -1,6 +1,17 @@
 <main class="app-wrapper">
   <section class="panel">
-    <h1>⏳ Kalkulator końca pracy</h1>
+    <header class="panel-header">
+      <h1>Kalkulator końca pracy</h1>
+      <button
+        type="button"
+        class="icon-button settings-button"
+        (click)="openConfig()"
+        aria-label="Otwórz konfigurację"
+        data-tooltip="Konfiguracja"
+      >
+        ⚙
+      </button>
+    </header>
 
     <form class="form" [formGroup]="form" novalidate>
       <div class="form-row">
@@ -44,6 +55,22 @@
       <div class="breaks-controls">
         <button type="button" class="ghost-button" (click)="addBreak()">
           + Przerwa
+        </button>
+        <button
+          type="button"
+          class="ghost-button"
+          (click)="showAdjustment('overtimePickup')"
+          [disabled]="isAdjustmentVisible('overtimePickup')"
+        >
+          + Odbiór nadgodzin
+        </button>
+        <button
+          type="button"
+          class="ghost-button"
+          (click)="showAdjustment('undertimeMakeup')"
+          [disabled]="isAdjustmentVisible('undertimeMakeup')"
+        >
+          + Odrobienie niedoczasu
         </button>
       </div>
 
@@ -116,6 +143,128 @@
               Uzupełnij obie godziny.
             </div>
           </div>
+        </div>
+      </div>
+
+      <div
+        class="adjustments-wrapper"
+        *ngIf="
+          isAdjustmentVisible('overtimePickup') ||
+          isAdjustmentVisible('undertimeMakeup')
+        "
+      >
+        <div
+          class="adjustment-row"
+          *ngIf="isAdjustmentVisible('overtimePickup')"
+          formGroupName="overtimePickup"
+        >
+          <div class="adjustment-title">Odbiór nadgodzin</div>
+
+          <div class="form-row inline">
+            <label for="overtime-hours">Godziny</label>
+            <input
+              id="overtime-hours"
+              type="number"
+              min="0"
+              max="23"
+              step="1"
+              inputmode="numeric"
+              placeholder="0"
+              formControlName="hours"
+            />
+            <span
+              class="error"
+              *ngIf="isInvalid(overtimePickup.controls.hours)"
+            >
+              Wpisz pełne godziny od 0 do 23.
+            </span>
+          </div>
+
+          <div class="form-row inline">
+            <label for="overtime-minutes">Minuty</label>
+            <input
+              id="overtime-minutes"
+              type="number"
+              min="0"
+              max="59"
+              step="1"
+              inputmode="numeric"
+              placeholder="0"
+              formControlName="minutes"
+            />
+            <span
+              class="error"
+              *ngIf="isInvalid(overtimePickup.controls.minutes)"
+            >
+              Wpisz pełne minuty od 0 do 59.
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="remove-button"
+            (click)="removeAdjustment('overtimePickup')"
+            aria-label="Usuń odbiór nadgodzin"
+          >
+            ✖
+          </button>
+        </div>
+
+        <div
+          class="adjustment-row"
+          *ngIf="isAdjustmentVisible('undertimeMakeup')"
+          formGroupName="undertimeMakeup"
+        >
+          <div class="adjustment-title">Odrobienie niedoczasu</div>
+
+          <div class="form-row inline">
+            <label for="undertime-hours">Godziny</label>
+            <input
+              id="undertime-hours"
+              type="number"
+              min="0"
+              max="23"
+              step="1"
+              inputmode="numeric"
+              placeholder="0"
+              formControlName="hours"
+            />
+            <span
+              class="error"
+              *ngIf="isInvalid(undertimeMakeup.controls.hours)"
+            >
+              Wpisz pełne godziny od 0 do 23.
+            </span>
+          </div>
+
+          <div class="form-row inline">
+            <label for="undertime-minutes">Minuty</label>
+            <input
+              id="undertime-minutes"
+              type="number"
+              min="0"
+              max="59"
+              step="1"
+              inputmode="numeric"
+              placeholder="0"
+              formControlName="minutes"
+            />
+            <span
+              class="error"
+              *ngIf="isInvalid(undertimeMakeup.controls.minutes)"
+            >
+              Wpisz pełne minuty od 0 do 59.
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="remove-button"
+            (click)="removeAdjustment('undertimeMakeup')"
+            aria-label="Usuń odrobienie niedoczasu"
+          >
+            ✖
+          </button>
         </div>
       </div>
 
@@ -206,4 +355,88 @@
       </div>
     </section>
   </section>
+
+  <div
+    class="dialog-backdrop"
+    *ngIf="isConfigOpen()"
+    (click)="closeConfig()"
+  >
+    <section
+      class="config-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="config-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="dialog-header">
+        <h2 id="config-title">Konfiguracja</h2>
+        <button
+          type="button"
+          class="icon-button"
+          (click)="closeConfig()"
+          aria-label="Zamknij konfigurację"
+        >
+          ✖
+        </button>
+      </header>
+
+      <form class="config-form" [formGroup]="configForm" novalidate>
+        <div class="config-row">
+          <span class="config-label">Motyw</span>
+          <div class="theme-segment" role="group" aria-label="Motyw aplikacji">
+            <button
+              type="button"
+              [class.active]="!configForm.controls.darkMode.value"
+              (click)="setDarkMode(false)"
+            >
+              Jasny
+            </button>
+            <button
+              type="button"
+              [class.active]="configForm.controls.darkMode.value"
+              (click)="setDarkMode(true)"
+            >
+              Ciemny
+            </button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="favorite-hour">Ulubiona godzina startu</label>
+          <div class="favorite-save-row">
+            <input
+              id="favorite-hour"
+              type="number"
+              min="0"
+              max="23"
+              step="1"
+              inputmode="numeric"
+              placeholder="np. 7"
+              formControlName="favoriteHour"
+              aria-describedby="favorite-hour-feedback"
+            />
+            <button
+              type="button"
+              class="save-button"
+              (click)="saveFavoriteHour()"
+              [disabled]="configForm.controls.favoriteHour.invalid"
+            >
+              Zapisz
+            </button>
+          </div>
+          <span
+            id="favorite-hour-feedback"
+            class="error"
+            *ngIf="isInvalid(configForm.controls.favoriteHour)"
+          >
+            Wpisz tylko pełną godzinę od 0 do 23, np. 7. Bez minut i dwukropka.
+          </span>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="toast" *ngIf="toastMessage() as message" role="status">
+    {{ message }}
+  </div>
 </main>

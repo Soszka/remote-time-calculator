@@ -1,9 +1,24 @@
 :host {
   display: block;
   min-height: 100vh;
-  font-family: 'Inter', 'Manrope', 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at top, #f3f7ff 0%, #eef1ff 45%, #e7ebff 100%);
+  font-family: "Inter", "Manrope", "Segoe UI", sans-serif;
+  background: radial-gradient(
+    circle at top,
+    #f3f7ff 0%,
+    #eef1ff 45%,
+    #e7ebff 100%
+  );
   color: #1f2933;
+}
+
+:host.dark-mode {
+  background: radial-gradient(
+    circle at top,
+    #22252d 0%,
+    #16181d 48%,
+    #101114 100%
+  );
+  color: #f5f7fb;
 }
 
 .app-wrapper {
@@ -28,12 +43,67 @@
   gap: 1.75rem;
 }
 
+:host.dark-mode .panel {
+  background: rgba(29, 31, 36, 0.94);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.36);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 h1 {
   font-size: clamp(2rem, 4vw, 2.75rem);
   margin: 0;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   color: #0f172a;
+  line-height: 1.1;
+}
+
+:host.dark-mode h1 {
+  color: #f8fafc;
+}
+
+.icon-button {
+  border: none;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.icon-button:hover {
+  transform: translateY(-1px) rotate(18deg);
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.45);
+  outline-offset: 3px;
+}
+
+:host.dark-mode .icon-button {
+  background: rgba(20, 184, 166, 0.16);
+  color: #5eead4;
+}
+
+:host.dark-mode .icon-button:hover {
+  background: rgba(20, 184, 166, 0.24);
 }
 
 .form {
@@ -58,6 +128,12 @@ label {
   color: #334155;
 }
 
+:host.dark-mode label,
+:host.dark-mode .breaks-title,
+:host.dark-mode .config-label {
+  color: #d7dde8;
+}
+
 input {
   border: none;
   border-radius: 14px;
@@ -66,13 +142,29 @@ input {
   font-size: 1rem;
   font-weight: 500;
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.08);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 input:focus {
   outline: none;
-  box-shadow: inset 0 0 0 2px #6366f1, 0 8px 18px rgba(99, 102, 241, 0.2);
+  box-shadow:
+    inset 0 0 0 2px #6366f1,
+    0 8px 18px rgba(99, 102, 241, 0.2);
   transform: translateY(-1px);
+}
+
+:host.dark-mode input {
+  background: linear-gradient(145deg, #262a33, #20242c);
+  color: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+
+:host.dark-mode input:focus {
+  box-shadow:
+    inset 0 0 0 2px #14b8a6,
+    0 8px 18px rgba(20, 184, 166, 0.18);
 }
 
 input::placeholder {
@@ -86,7 +178,9 @@ input::placeholder {
 
 .breaks-controls {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.45rem;
   margin-top: -0.5rem;
   margin-bottom: -0.6rem;
 }
@@ -102,7 +196,9 @@ input::placeholder {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .ghost-button:hover {
@@ -110,9 +206,27 @@ input::placeholder {
   transform: translateY(-1px);
 }
 
+.ghost-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.ghost-button:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
 .ghost-button:focus-visible {
   outline: 2px solid rgba(99, 102, 241, 0.4);
   outline-offset: 2px;
+}
+
+:host.dark-mode .ghost-button {
+  color: #5eead4;
+}
+
+:host.dark-mode .ghost-button:hover {
+  background: rgba(20, 184, 166, 0.14);
 }
 
 .breaks-wrapper {
@@ -143,6 +257,10 @@ input::placeholder {
   background: rgba(99, 102, 241, 0.06);
 }
 
+:host.dark-mode .break-row {
+  background: rgba(20, 184, 166, 0.09);
+}
+
 .break-warning {
   grid-column: 1 / -1;
 }
@@ -157,7 +275,9 @@ input::placeholder {
   border-radius: 50%;
   align-self: center;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .remove-button:hover {
@@ -169,6 +289,36 @@ input::placeholder {
   color: #dc2626;
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+.adjustments-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.adjustment-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) repeat(2, minmax(0, 1fr)) auto;
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.75rem 0.85rem;
+  border-radius: 18px;
+  background: rgba(14, 165, 233, 0.08);
+}
+
+:host.dark-mode .adjustment-row {
+  background: rgba(139, 92, 246, 0.13);
+}
+
+.adjustment-title {
+  align-self: center;
+  font-weight: 700;
+  color: #334155;
+}
+
+:host.dark-mode .adjustment-title {
+  color: #f1f5f9;
 }
 
 .primary-button {
@@ -184,7 +334,9 @@ input::placeholder {
   position: relative;
   overflow: hidden;
   box-shadow: 0 14px 30px rgba(79, 70, 229, 0.22);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .primary-button:disabled {
@@ -198,8 +350,18 @@ input::placeholder {
   box-shadow: 0 18px 34px rgba(79, 70, 229, 0.28);
 }
 
+:host.dark-mode .primary-button {
+  background: linear-gradient(135deg, #0f766e, #22c55e);
+  color: #f8fafc;
+  box-shadow: 0 14px 30px rgba(34, 197, 94, 0.16);
+}
+
+:host.dark-mode .primary-button:not(:disabled):hover {
+  box-shadow: 0 18px 34px rgba(20, 184, 166, 0.22);
+}
+
 .primary-button::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -209,7 +371,10 @@ input::placeholder {
   background: rgba(255, 255, 255, 0.35);
   border-radius: 50%;
   opacity: 0;
-  transition: width 0.45s ease, height 0.45s ease, opacity 0.45s ease;
+  transition:
+    width 0.45s ease,
+    height 0.45s ease,
+    opacity 0.45s ease;
 }
 
 .primary-button:active::after {
@@ -219,7 +384,111 @@ input::placeholder {
   transition: 0s;
 }
 
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(5px);
+}
 
+.config-dialog {
+  width: min(420px, 100%);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+:host.dark-mode .config-dialog {
+  background: rgba(29, 31, 36, 0.98);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #0f172a;
+}
+
+:host.dark-mode .dialog-header h2 {
+  color: #f8fafc;
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.config-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.theme-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+:host.dark-mode .theme-segment {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.theme-segment button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.72rem 0.8rem;
+  background: transparent;
+  color: #475569;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.theme-segment button.active {
+  background: #fff;
+  color: #4338ca;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+}
+
+:host.dark-mode .theme-segment button {
+  color: #cbd5e1;
+}
+
+:host.dark-mode .theme-segment button.active {
+  background: #242831;
+  color: #5eead4;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
 
 @media (max-width: 720px) {
   .panel {
@@ -227,7 +496,15 @@ input::placeholder {
     padding: 1.6rem;
   }
 
+  .panel-header {
+    align-items: flex-start;
+  }
+
   .break-row {
+    grid-template-columns: 1fr;
+  }
+
+  .adjustment-row {
     grid-template-columns: 1fr;
   }
 

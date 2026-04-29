@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, signal } from '@angular/core';
+import { Component, HostBinding, OnDestroy, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -15,13 +15,25 @@ interface BreakFormGroup extends FormGroup<{
   end: FormControl<string | null>;
 }> {}
 
+interface DurationFormGroup extends FormGroup<{
+  hours: FormControl<number | null>;
+  minutes: FormControl<number | null>;
+}> {}
+
 type ResultState = 'beforeStart' | 'inProgress' | 'complete';
+type AdjustmentKind = 'overtimePickup' | 'undertimeMakeup';
+type ThemeMode = 'light' | 'dark';
 
 interface ResultPayload {
   endTime: string;
   remainingLabel: string;
   message: string;
   state: ResultState;
+}
+
+interface AppSettings {
+  theme: ThemeMode;
+  favoriteHour: number | null;
 }
 
 @Component({
@@ -36,6 +48,12 @@ export class AppComponent implements OnDestroy {
   private readonly minStartMinutes = 5 * 60 + 30;
   private readonly maxEndMinutes = 21 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
+  private readonly settingsStorageKey = 'workEndCalculator.settings';
+  private readonly startTimeStorageKey = 'workEndCalculator.startTime';
+  private readonly defaultSettings: AppSettings = {
+    theme: 'light',
+    favoriteHour: null,
+  };
 
   readonly confettiPieces: { left: number; delay: number; duration: number }[] = [
     { left: 6, delay: -0.2, duration: 2.6 },
@@ -297,15 +315,64 @@ export class AppComponent implements OnDestroy {
     return null;
   };
 
+  private readonly durationPartValidatorFn = (max: number) => (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+    const value = control.value as number | string | null;
+    if (value === null || value === '') {
+      return null;
+    }
+
+    const numericValue = Number(value);
+    if (
+      !Number.isFinite(numericValue) ||
+      !Number.isInteger(numericValue) ||
+      numericValue < 0 ||
+      numericValue > max
+    ) {
+      return { invalidDuration: true };
+    }
+
+    return null;
+  };
+
+  private readonly favoriteHourValidatorFn = (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+    const value = control.value as number | string | null;
+    if (value === null || value === '') {
+      return null;
+    }
+
+    return this.normalizeFavoriteHour(value) === null
+      ? { invalidFavoriteHour: true }
+      : null;
+  };
+
   readonly form = this.fb.group({
     startTime: ['', [Validators.required, this.startTimeValidatorFn]],
     breaks: this.fb.array<BreakFormGroup>([]),
+    overtimePickup: this.createDurationGroup(),
+    undertimeMakeup: this.createDurationGroup(),
+  });
+
+  readonly configForm = this.fb.group({
+    darkMode: this.fb.control(false, { nonNullable: true }),
+    favoriteHour: this.fb.control<number | null>(null, this.favoriteHourValidatorFn),
   });
 
   readonly result = signal<ResultPayload | null>(null);
   readonly scheduleError = signal<string | null>(null);
+  readonly isConfigOpen = signal(false);
+  readonly toastMessage = signal<string | null>(null);
+  readonly settings = signal<AppSettings>(this.defaultSettings);
+  readonly adjustmentPanels = signal<Record<AdjustmentKind, boolean>>({
+    overtimePickup: false,
+    undertimeMakeup: false,
+  });
 
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
+  private toastTimeout: ReturnType<typeof setTimeout> | null = null;
   private countdownTargetSeconds: number | null = null;
   private messageContext: {
     dayName: string;
@@ -314,15 +381,94 @@ export class AppComponent implements OnDestroy {
   } | null = null;
 
   constructor(private readonly fb: FormBuilder) {
+    const settings = this.loadSettings();
+    this.settings.set(settings);
+    this.configForm.patchValue(
+      {
+        darkMode: settings.theme === 'dark',
+        favoriteHour: settings.favoriteHour,
+      },
+      { emitEvent: false }
+    );
+
+    const savedStartTime = this.loadStartTime();
+    const initialStartTime =
+      savedStartTime ?? this.getFavoriteStartPrefix(settings.favoriteHour);
+    if (initialStartTime) {
+      this.form.controls.startTime.setValue(initialStartTime, { emitEvent: false });
+    }
+
     this.form.valueChanges.subscribe(() => this.scheduleError.set(null));
+    this.form.controls.startTime.valueChanges.subscribe((value) =>
+      this.persistStartTime(value)
+    );
+    this.configForm.controls.darkMode.valueChanges.subscribe(() =>
+      this.syncThemeFromConfig()
+    );
+  }
+
+  @HostBinding('class.dark-mode')
+  get darkModeClass(): boolean {
+    return this.settings().theme === 'dark';
   }
 
   ngOnDestroy(): void {
     this.clearCountdown();
+    this.clearToast();
   }
 
   get breaks(): FormArray<BreakFormGroup> {
     return this.form.controls.breaks;
+  }
+
+  get overtimePickup(): DurationFormGroup {
+    return this.form.controls.overtimePickup;
+  }
+
+  get undertimeMakeup(): DurationFormGroup {
+    return this.form.controls.undertimeMakeup;
+  }
+
+  openConfig(): void {
+    const settings = this.settings();
+    this.configForm.patchValue(
+      {
+        darkMode: settings.theme === 'dark',
+        favoriteHour: settings.favoriteHour,
+      },
+      { emitEvent: false }
+    );
+    this.configForm.controls.favoriteHour.markAsUntouched();
+    this.isConfigOpen.set(true);
+  }
+
+  closeConfig(): void {
+    this.isConfigOpen.set(false);
+  }
+
+  setDarkMode(enabled: boolean): void {
+    this.configForm.controls.darkMode.setValue(enabled);
+  }
+
+  saveFavoriteHour(): void {
+    const favoriteHourControl = this.configForm.controls.favoriteHour;
+    if (favoriteHourControl.invalid) {
+      favoriteHourControl.markAsTouched();
+      return;
+    }
+
+    const nextSettings: AppSettings = {
+      ...this.settings(),
+      favoriteHour: this.normalizeFavoriteHour(favoriteHourControl.value),
+    };
+
+    this.settings.set(nextSettings);
+    this.saveSettings(nextSettings);
+    this.showToast(
+      nextSettings.favoriteHour === null
+        ? 'Ulubiona godzina startu została wyczyszczona.'
+        : 'Nowa ulubiona godzina startu została zapisana.'
+    );
   }
 
   addBreak(): void {
@@ -338,6 +484,31 @@ export class AppComponent implements OnDestroy {
   removeBreak(index: number): void {
     this.scheduleError.set(null);
     this.breaks.removeAt(index);
+  }
+
+  showAdjustment(kind: AdjustmentKind): void {
+    this.scheduleError.set(null);
+    this.adjustmentPanels.update((current) => ({
+      ...current,
+      [kind]: true,
+    }));
+  }
+
+  removeAdjustment(kind: AdjustmentKind): void {
+    this.scheduleError.set(null);
+    this.adjustmentGroup(kind).reset();
+    this.adjustmentPanels.update((current) => ({
+      ...current,
+      [kind]: false,
+    }));
+  }
+
+  isAdjustmentVisible(kind: AdjustmentKind): boolean {
+    return this.adjustmentPanels()[kind];
+  }
+
+  isInvalid(control: AbstractControl): boolean {
+    return control.invalid && (control.touched || control.dirty);
   }
 
   get canCalculate(): boolean {
@@ -442,6 +613,159 @@ export class AppComponent implements OnDestroy {
     const start = group.controls.start.value;
     const end = group.controls.end.value;
     return (!!start && !end) || (!start && !!end);
+  }
+
+  private createDurationGroup(): DurationFormGroup {
+    return this.fb.group({
+      hours: this.fb.control<number | null>(
+        null,
+        this.durationPartValidatorFn(23)
+      ),
+      minutes: this.fb.control<number | null>(
+        null,
+        this.durationPartValidatorFn(59)
+      ),
+    });
+  }
+
+  private adjustmentGroup(kind: AdjustmentKind): DurationFormGroup {
+    return kind === 'overtimePickup' ? this.overtimePickup : this.undertimeMakeup;
+  }
+
+  private getDurationMinutes(group: DurationFormGroup): number {
+    const hours = Number(group.controls.hours.value ?? 0);
+    const minutes = Number(group.controls.minutes.value ?? 0);
+    return hours * 60 + minutes;
+  }
+
+  private getStorage(): Storage | null {
+    if (typeof localStorage === 'undefined') {
+      return null;
+    }
+
+    return localStorage;
+  }
+
+  private loadSettings(): AppSettings {
+    const storage = this.getStorage();
+    if (!storage) {
+      return this.defaultSettings;
+    }
+
+    try {
+      const rawSettings = storage.getItem(this.settingsStorageKey);
+      if (!rawSettings) {
+        return this.defaultSettings;
+      }
+
+      const parsedSettings = JSON.parse(rawSettings) as Partial<AppSettings>;
+      return {
+        theme: parsedSettings.theme === 'dark' ? 'dark' : 'light',
+        favoriteHour: this.normalizeFavoriteHour(parsedSettings.favoriteHour),
+      };
+    } catch {
+      return this.defaultSettings;
+    }
+  }
+
+  private saveSettings(settings: AppSettings): void {
+    const storage = this.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    try {
+      storage.setItem(this.settingsStorageKey, JSON.stringify(settings));
+    } catch {
+      return;
+    }
+  }
+
+  private syncThemeFromConfig(): void {
+    const nextSettings: AppSettings = {
+      ...this.settings(),
+      theme: this.configForm.controls.darkMode.value ? 'dark' : 'light',
+    };
+
+    this.settings.set(nextSettings);
+    this.saveSettings(nextSettings);
+  }
+
+  private showToast(message: string): void {
+    this.clearToast();
+    this.toastMessage.set(message);
+    this.toastTimeout = setTimeout(() => {
+      this.toastMessage.set(null);
+      this.toastTimeout = null;
+    }, 3200);
+  }
+
+  private clearToast(): void {
+    if (this.toastTimeout !== null) {
+      clearTimeout(this.toastTimeout);
+      this.toastTimeout = null;
+    }
+  }
+
+  private loadStartTime(): string | null {
+    const storage = this.getStorage();
+    if (!storage) {
+      return null;
+    }
+
+    const savedStartTime = storage.getItem(this.startTimeStorageKey);
+    if (!savedStartTime) {
+      return null;
+    }
+
+    if (!this.isTimeValid(savedStartTime)) {
+      storage.removeItem(this.startTimeStorageKey);
+      return null;
+    }
+
+    return savedStartTime.trim().replace('.', ':');
+  }
+
+  private persistStartTime(value: string | null): void {
+    const storage = this.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    const normalizedValue = value?.trim() ?? '';
+    if (!normalizedValue) {
+      storage.removeItem(this.startTimeStorageKey);
+      return;
+    }
+
+    if (this.isTimeValid(normalizedValue)) {
+      storage.setItem(
+        this.startTimeStorageKey,
+        normalizedValue.replace('.', ':')
+      );
+    }
+  }
+
+  private normalizeFavoriteHour(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const numericValue = Number(value);
+    if (
+      !Number.isFinite(numericValue) ||
+      !Number.isInteger(numericValue) ||
+      numericValue < 0 ||
+      numericValue > 23
+    ) {
+      return null;
+    }
+
+    return numericValue;
+  }
+
+  private getFavoriteStartPrefix(favoriteHour: number | null): string {
+    return favoriteHour === null ? '' : `${favoriteHour}:`;
   }
 
   private isTimeValid(value: string): boolean {
@@ -610,7 +934,36 @@ export class AppComponent implements OnDestroy {
       previousEnd = interval.end;
     }
 
-    const totalEndMinutes = startMinutes + this.baseMinutes + totalBreakMinutes;
+    const overtimePickupMinutes = this.isAdjustmentVisible('overtimePickup')
+      ? this.getDurationMinutes(this.overtimePickup)
+      : 0;
+    const undertimeMakeupMinutes = this.isAdjustmentVisible('undertimeMakeup')
+      ? this.getDurationMinutes(this.undertimeMakeup)
+      : 0;
+    const totalEndMinutes =
+      startMinutes +
+      this.baseMinutes +
+      totalBreakMinutes -
+      overtimePickupMinutes +
+      undertimeMakeupMinutes;
+
+    if (totalEndMinutes < startMinutes) {
+      return {
+        totalEndMinutes,
+        error: 'Odbiór nadgodzin jest większy niż zaplanowany czas pracy.',
+      };
+    }
+
+    const lastBreakEnd = intervals.length
+      ? intervals[intervals.length - 1].end
+      : startMinutes;
+
+    if (totalEndMinutes < lastBreakEnd) {
+      return {
+        totalEndMinutes,
+        error: 'Przerwa nie może wypadać po wyliczonym końcu pracy.',
+      };
+    }
 
     if (totalEndMinutes > this.maxEndMinutes) {
       return {

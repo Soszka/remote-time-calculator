@@ -17,6 +17,174 @@ input {
   font-family: inherit;
 }
 
+app-root input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+app-root input[type="number"]::-webkit-inner-spin-button,
+app-root input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+app-root .icon-button.settings-button {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  flex-basis: 54px;
+  font-size: 1.65rem;
+  box-shadow: 0 10px 24px rgba(67, 56, 202, 0.14);
+}
+
+app-root .icon-button.settings-button::after,
+app-root .icon-button.settings-button::before {
+  position: absolute;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  z-index: 30;
+}
+
+app-root .icon-button.settings-button::after {
+  content: attr(data-tooltip);
+  top: calc(100% + 0.7rem);
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateY(-4px);
+}
+
+app-root .icon-button.settings-button::before {
+  content: "";
+  top: calc(100% + 0.35rem);
+  width: 10px;
+  height: 10px;
+  margin-right: 1.1rem;
+  background: #0f172a;
+  transform: translateY(-4px) rotate(45deg);
+}
+
+app-root .icon-button.settings-button:hover::after,
+app-root .icon-button.settings-button:hover::before,
+app-root .icon-button.settings-button:focus-visible::after,
+app-root .icon-button.settings-button:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+app-root .icon-button.settings-button:hover::before,
+app-root .icon-button.settings-button:focus-visible::before {
+  transform: translateY(0) rotate(45deg);
+}
+
+app-root .icon-button.settings-button:hover {
+  transform: translateY(-1px);
+}
+
+app-root.dark-mode .icon-button.settings-button {
+  box-shadow: 0 10px 24px rgba(20, 184, 166, 0.14);
+}
+
+app-root.dark-mode .icon-button.settings-button::after,
+app-root.dark-mode .icon-button.settings-button::before {
+  background: #f8fafc;
+}
+
+app-root.dark-mode .icon-button.settings-button::after {
+  color: #111827;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
+}
+
+app-root .favorite-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+app-root .save-button {
+  border: none;
+  border-radius: 14px;
+  padding: 0 1rem;
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  color: #f8fafc;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.2);
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+app-root .save-button:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.08) brightness(1.03);
+  box-shadow: 0 15px 28px rgba(6, 182, 212, 0.24);
+}
+
+app-root .save-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+app-root .save-button:disabled:hover {
+  filter: none;
+  box-shadow: none;
+}
+
+app-root.dark-mode .save-button {
+  background: linear-gradient(135deg, #0f766e, #22c55e);
+  color: #f8fafc;
+  box-shadow: 0 12px 24px rgba(34, 197, 94, 0.18);
+}
+
+app-root.dark-mode .save-button:hover {
+  box-shadow: 0 15px 30px rgba(20, 184, 166, 0.24);
+}
+
+app-root.dark-mode .save-button:disabled:hover {
+  filter: none;
+  box-shadow: none;
+}
+
+app-root .toast {
+  position: fixed;
+  right: clamp(1rem, 4vw, 2rem);
+  bottom: clamp(1rem, 4vw, 2rem);
+  z-index: 40;
+  max-width: min(360px, calc(100vw - 2rem));
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.24);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+  animation: toastSlideIn 220ms ease-out;
+}
+
+app-root.dark-mode .toast {
+  background: #e6fff7;
+  color: #111827;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
+}
+
 .result-block {
   display: flex;
   flex-direction: column;
@@ -29,6 +197,11 @@ input {
   padding: 1.25rem 1.5rem;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
   transform-origin: bottom;
+}
+
+app-root.dark-mode .card {
+  background: #20242c;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
 }
 
 .highlight-card {
@@ -44,6 +217,26 @@ input {
   gap: 0.6rem;
   position: relative;
   overflow: hidden;
+}
+
+app-root.dark-mode .highlight-card {
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(45, 212, 191, 0.24),
+      transparent 36%
+    ),
+    linear-gradient(145deg, #23272f 0%, #171a20 58%, #102f2b 100%);
+  border: 1px solid rgba(94, 234, 212, 0.16);
+  text-shadow: none;
+}
+
+app-root.dark-mode .summary-item {
+  background: rgba(6, 12, 18, 0.58);
+  border: 1px solid rgba(94, 234, 212, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 30px rgba(0, 0, 0, 0.14);
 }
 
 .summary-line {
@@ -122,9 +315,31 @@ input {
   line-height: 1.5;
 }
 
+app-root.dark-mode .message-card {
+  color: #e2e8f0;
+}
+
 .message-card p {
   margin: 0;
   font-style: italic;
+}
+
+@media (max-width: 720px) {
+  app-root .favorite-save-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Celebration animations */
