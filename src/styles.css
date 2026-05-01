@@ -195,10 +195,95 @@ app-root.dark-mode .toast {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
 }
 
+app-root .panel {
+  position: relative;
+  transform-origin: center;
+  transition:
+    width 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    gap 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 260ms ease,
+    box-shadow 260ms ease,
+    transform 260ms ease;
+}
+
+app-root .panel.switching-to-result {
+  animation: panelFocusOut 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+app-root .form {
+  transform-origin: center top;
+}
+
+app-root .form.form-switching-out {
+  pointer-events: none;
+  animation: formSwitchOut 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+app-root .break-row,
+app-root .adjustment-row {
+  --dynamic-card-padding-y: 0.75rem;
+  max-height: 34rem;
+  overflow: hidden;
+  position: relative;
+  transform-origin: center top;
+  will-change: max-height, opacity, transform, padding, filter;
+  animation: dynamicCardEnter 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+app-root .break-row.dynamic-card-leaving,
+app-root .adjustment-row.dynamic-card-leaving {
+  pointer-events: none;
+  animation: dynamicCardLeave 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+app-root .break-row.dynamic-card-sweep::after,
+app-root .adjustment-row.dynamic-card-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(15, 23, 42, 0.05) 30%,
+    rgba(79, 70, 229, 0.22) 44%,
+    rgba(14, 165, 233, 0.2) 54%,
+    rgba(15, 23, 42, 0.04) 66%,
+    transparent 78%
+  );
+  mix-blend-mode: multiply;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-115%);
+  animation: dynamicCardSweep 680ms ease-out 90ms both;
+}
+
+app-root.dark-mode .break-row.dynamic-card-sweep::after,
+app-root.dark-mode .adjustment-row.dynamic-card-sweep::after {
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 42%,
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+}
+
+app-root .break-row.dynamic-card-leaving::after,
+app-root .adjustment-row.dynamic-card-leaving::after {
+  animation: none;
+  opacity: 0;
+}
+
 .result-block {
   display: flex;
   flex-direction: column;
   gap: 0.95rem;
+  position: relative;
+  isolation: isolate;
+  transform-origin: center top;
+  animation: resultBlockEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .card {
@@ -229,6 +314,119 @@ app-root.dark-mode .card {
   overflow: hidden;
 }
 
+.result-reveal .highlight-card {
+  animation: resultHeroEnter 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.result-reveal .highlight-card::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.34) 48%,
+    transparent 66%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-42%) rotate(10deg);
+  animation: resultShineSweep 880ms ease-out 120ms both;
+}
+
+.highlight-card.compact-highlight {
+  gap: 1rem;
+  padding: clamp(1.05rem, 3vw, 1.45rem);
+}
+
+.compact-feedback,
+.compact-feedback-box,
+.compact-toolbar,
+.compact-highlight .summary-line,
+.compact-details {
+  position: relative;
+  z-index: 1;
+}
+
+.compact-feedback-box {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  padding: 0.85rem 0.95rem;
+  background: rgba(15, 23, 42, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 30px rgba(15, 23, 42, 0.1);
+}
+
+.compact-feedback {
+  max-width: 58ch;
+  margin: 0;
+  color: rgba(248, 250, 252, 0.92);
+  font-size: clamp(0.9rem, 2vw, 1.02rem);
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.compact-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.edit-button {
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem;
+  background: rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.edit-button:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.edit-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.62);
+  outline-offset: 3px;
+}
+
+.compact-details {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.compact-detail {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 0.38rem 0.62rem;
+  background: rgba(15, 23, 42, 0.18);
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 app-root.dark-mode .highlight-card {
   background:
     radial-gradient(
@@ -237,7 +435,12 @@ app-root.dark-mode .highlight-card {
       transparent 36%
     ),
     linear-gradient(145deg, #23272f 0%, #171a20 58%, #102f2b 100%);
-  border: 1px solid rgba(94, 234, 212, 0.16);
+  background-clip: padding-box;
+  border: 1px solid rgba(125, 249, 232, 0.32);
+  box-shadow:
+    0 0 0 1px rgba(94, 234, 212, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.28);
   text-shadow: none;
 }
 
@@ -275,6 +478,14 @@ app-root.dark-mode .summary-item {
   min-width: 0;
 }
 
+.result-reveal .summary-item {
+  animation: summaryItemPop 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.result-reveal .summary-item:nth-child(2) {
+  animation-delay: 80ms;
+}
+
 .summary-icon {
   font-size: clamp(2rem, 6.2vw, 3.2rem);
   line-height: 1;
@@ -309,7 +520,8 @@ app-root.dark-mode .summary-item {
 .highlight-card.complete::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 1px;
+  border-radius: inherit;
   background: radial-gradient(
     circle at top,
     rgba(255, 255, 255, 0.25),
@@ -325,6 +537,15 @@ app-root.dark-mode .summary-item {
   line-height: 1.5;
 }
 
+.result-reveal .message-card,
+.result-reveal .compact-feedback-box {
+  animation: resultMessageEnter 460ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+.result-reveal .compact-toolbar {
+  animation: resultMessageEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+
 app-root.dark-mode .message-card {
   color: #e2e8f0;
 }
@@ -338,6 +559,95 @@ app-root.dark-mode .message-card {
   app-root .favorite-save-row {
     grid-template-columns: 1fr;
   }
+
+  app-root .panel {
+    gap: 1.45rem;
+  }
+
+  app-root .form {
+    gap: 1.05rem;
+  }
+
+  app-root input {
+    min-height: 4.6rem;
+    padding: 1rem 1.25rem;
+    border-radius: 20px;
+    font-size: 1.05rem;
+  }
+
+  app-root .breaks-wrapper,
+  app-root .adjustments-wrapper {
+    gap: 0.85rem;
+  }
+
+  app-root .breaks-title {
+    font-size: 1.05rem;
+  }
+
+  app-root .break-row,
+  app-root .adjustment-row {
+    --dynamic-card-padding-y: 1.3rem;
+    border-radius: 24px;
+  }
+
+  app-root .break-row {
+    gap: 0.95rem;
+    padding: 1.25rem 1.2rem 1.35rem;
+    padding-right: 4.85rem;
+  }
+
+  app-root .adjustment-row {
+    gap: 1rem;
+    padding: 1.35rem 1.2rem 1.4rem;
+  }
+
+  app-root .adjustment-title {
+    padding-right: 3.8rem;
+    margin-bottom: 0.1rem;
+    font-size: 1.2rem;
+    line-height: 1.2;
+  }
+
+  app-root .form-row.inline {
+    gap: 0.55rem;
+  }
+
+  app-root .remove-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 46px;
+    height: 46px;
+    font-size: 1.25rem;
+    align-self: auto;
+    justify-self: auto;
+    z-index: 2;
+  }
+
+  app-root .primary-button {
+    min-height: 4rem;
+    border-radius: 18px;
+    padding: 0.95rem 1.2rem;
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 430px) {
+  app-root .app-wrapper {
+    padding: 1.25rem;
+  }
+
+  app-root .panel {
+    padding: 1.25rem;
+  }
+
+  app-root .break-row {
+    padding-right: 4.6rem;
+  }
+
+  app-root .adjustment-row {
+    padding: 1.25rem 1.05rem 1.3rem;
+  }
 }
 
 @keyframes toastSlideIn {
@@ -349,6 +659,218 @@ app-root.dark-mode .message-card {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes dynamicCardEnter {
+  0% {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transform: translateY(-18px) scaleX(0.98) scaleY(0.72);
+    box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+    filter: blur(7px) saturate(0.85);
+  }
+
+  46% {
+    max-height: 34rem;
+    opacity: 1;
+    padding-top: var(--dynamic-card-padding-y);
+    padding-bottom: var(--dynamic-card-padding-y);
+    transform: translateY(4px) scaleX(1.012) scaleY(1.035);
+    box-shadow: 0 18px 34px rgba(14, 165, 233, 0.16);
+    filter: blur(0) saturate(1.1);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translateY(-1px) scaleX(0.998) scaleY(0.992);
+    box-shadow: 0 10px 22px rgba(14, 165, 233, 0.1);
+    filter: saturate(1.08);
+  }
+
+  100% {
+    max-height: 34rem;
+    opacity: 1;
+    padding-top: var(--dynamic-card-padding-y);
+    padding-bottom: var(--dynamic-card-padding-y);
+    transform: translateY(0) scaleX(1) scaleY(1);
+    box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+    filter: saturate(1);
+  }
+}
+
+@keyframes dynamicCardLeave {
+  0% {
+    max-height: 34rem;
+    opacity: 1;
+    padding-top: var(--dynamic-card-padding-y);
+    padding-bottom: var(--dynamic-card-padding-y);
+    transform: translateY(0) scaleX(1) scaleY(1);
+    filter: blur(0) saturate(1);
+  }
+
+  36% {
+    opacity: 0.82;
+    transform: translateY(-4px) scaleX(1.01) scaleY(1.02);
+    filter: blur(0.5px) saturate(1.04);
+  }
+
+  100% {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transform: translateY(-14px) scaleX(0.97) scaleY(0.68);
+    filter: blur(8px) saturate(0.75);
+  }
+}
+
+@keyframes dynamicCardSweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-115%);
+  }
+
+  24% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(115%);
+  }
+}
+
+@keyframes formSwitchOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.985);
+    filter: blur(3px);
+  }
+}
+
+@keyframes panelFocusOut {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(0.99);
+  }
+}
+
+@keyframes resultBlockEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.006);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes resultHeroEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(26px) scale(0.965);
+    filter: saturate(0.8);
+  }
+
+  62% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.012);
+    filter: saturate(1.12);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: saturate(1);
+  }
+}
+
+@keyframes resultShineSweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-42%) rotate(10deg);
+  }
+
+  28% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(42%) rotate(10deg);
+  }
+}
+
+@keyframes summaryItemPop {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+
+  66% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.012);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes resultMessageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  app-root .panel,
+  app-root .panel.switching-to-result,
+  app-root .form.form-switching-out,
+  app-root .break-row,
+  app-root .adjustment-row,
+  .result-block,
+  .result-reveal .highlight-card,
+  .result-reveal .summary-item,
+  .result-reveal .message-card,
+  .result-reveal .compact-feedback-box,
+  .result-reveal .compact-toolbar,
+  .fade-in {
+    animation: none;
+    transition: none;
+  }
+
+  app-root .break-row.dynamic-card-sweep::after,
+  app-root .adjustment-row.dynamic-card-sweep::after,
+  .result-reveal .highlight-card::before {
+    animation: none;
+    opacity: 0;
   }
 }
 

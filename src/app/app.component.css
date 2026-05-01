@@ -43,9 +43,23 @@
   gap: 1.75rem;
 }
 
+.panel.compact-panel {
+  width: min(600px, 100%);
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  gap: 1.2rem;
+}
+
 :host.dark-mode .panel {
   background: rgba(29, 31, 36, 0.94);
   box-shadow: 0 24px 52px rgba(0, 0, 0, 0.36);
+}
+
+:host.dark-mode .panel.compact-panel {
+  background: transparent;
+  box-shadow: none;
 }
 
 .panel-header {
@@ -285,6 +299,14 @@ input::placeholder {
   background: rgba(239, 68, 68, 0.18);
 }
 
+.remove-button:disabled,
+.remove-button:disabled:hover {
+  cursor: default;
+  opacity: 0.5;
+  transform: none;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .schedule-error {
   color: #dc2626;
   font-size: 0.85rem;
@@ -331,6 +353,12 @@ input::placeholder {
   background: linear-gradient(135deg, #4f46e5, #22d3ee);
   color: #fff;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
   position: relative;
   overflow: hidden;
   box-shadow: 0 14px 30px rgba(79, 70, 229, 0.22);

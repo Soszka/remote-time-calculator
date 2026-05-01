@@ -29,11 +29,33 @@ interface ResultPayload {
   remainingLabel: string;
   message: string;
   state: ResultState;
+  startTime: string;
+  adjustmentLabel: string | null;
+  breaksLabel: string | null;
 }
 
 interface AppSettings {
   theme: ThemeMode;
   favoriteHour: number | null;
+}
+
+interface BreakSnapshot {
+  start: string;
+  end: string;
+}
+
+interface DurationSnapshot {
+  hours: number | null;
+  minutes: number | null;
+}
+
+interface DailyPlanSnapshot {
+  date: string;
+  startTime: string;
+  breaks: BreakSnapshot[];
+  overtimePickup: DurationSnapshot;
+  undertimeMakeup: DurationSnapshot;
+  adjustmentPanels: Record<AdjustmentKind, boolean>;
 }
 
 @Component({
@@ -50,35 +72,44 @@ export class AppComponent implements OnDestroy {
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
   private readonly settingsStorageKey = 'workEndCalculator.settings';
   private readonly startTimeStorageKey = 'workEndCalculator.startTime';
+  private readonly dailyPlanStorageKey = 'workEndCalculator.dailyPlan';
+  private readonly dynamicCardExitMs = 320;
+  private readonly dynamicCardHighlightMs = 860;
   private readonly defaultSettings: AppSettings = {
     theme: 'light',
     favoriteHour: null,
   };
 
-  readonly confettiPieces: { left: number; delay: number; duration: number }[] = [
-    { left: 6, delay: -0.2, duration: 2.6 },
-    { left: 14, delay: -0.6, duration: 2.8 },
-    { left: 22, delay: -1, duration: 2.5 },
-    { left: 30, delay: -0.4, duration: 2.7 },
-    { left: 38, delay: -0.9, duration: 2.3 },
-    { left: 46, delay: -0.3, duration: 2.6 },
-    { left: 54, delay: -0.7, duration: 2.9 },
-    { left: 62, delay: -1.1, duration: 2.4 },
-    { left: 70, delay: -0.5, duration: 2.8 },
-    { left: 78, delay: -0.95, duration: 2.5 },
-    { left: 86, delay: -0.35, duration: 2.6 },
-    { left: 94, delay: -0.8, duration: 2.2 },
-    { left: 2, delay: -1.25, duration: 2.7 },
-    { left: 98, delay: -0.55, duration: 2.3 },
-    { left: 10, delay: -1.35, duration: 2.1 },
-    { left: 26, delay: -0.85, duration: 2.9 },
-    { left: 42, delay: -1.6, duration: 2.4 },
-    { left: 58, delay: -0.45, duration: 2.2 },
-    { left: 74, delay: -1.05, duration: 2.6 },
-    { left: 88, delay: -1.45, duration: 2.8 },
-  ];
+  readonly confettiPieces: { left: number; delay: number; duration: number }[] =
+    [
+      { left: 6, delay: -0.2, duration: 2.6 },
+      { left: 14, delay: -0.6, duration: 2.8 },
+      { left: 22, delay: -1, duration: 2.5 },
+      { left: 30, delay: -0.4, duration: 2.7 },
+      { left: 38, delay: -0.9, duration: 2.3 },
+      { left: 46, delay: -0.3, duration: 2.6 },
+      { left: 54, delay: -0.7, duration: 2.9 },
+      { left: 62, delay: -1.1, duration: 2.4 },
+      { left: 70, delay: -0.5, duration: 2.8 },
+      { left: 78, delay: -0.95, duration: 2.5 },
+      { left: 86, delay: -0.35, duration: 2.6 },
+      { left: 94, delay: -0.8, duration: 2.2 },
+      { left: 2, delay: -1.25, duration: 2.7 },
+      { left: 98, delay: -0.55, duration: 2.3 },
+      { left: 10, delay: -1.35, duration: 2.1 },
+      { left: 26, delay: -0.85, duration: 2.9 },
+      { left: 42, delay: -1.6, duration: 2.4 },
+      { left: 58, delay: -0.45, duration: 2.2 },
+      { left: 74, delay: -1.05, duration: 2.6 },
+      { left: 88, delay: -1.45, duration: 2.8 },
+    ];
 
-  readonly sparkles: { top: number; left: number; delay: number; duration: number }[] = [
+  readonly sparkles: {
+    top: number;
+    left: number;
+    delay: number;
+    duration: number;
+  }[] = [
     { top: 18, left: 28, delay: 0, duration: 2.8 },
     { top: 10, left: 52, delay: 0.4, duration: 3 },
     { top: 24, left: 76, delay: 0.8, duration: 2.6 },
@@ -105,7 +136,10 @@ export class AppComponent implements OnDestroy {
     6: 'Sobota',
   };
 
-  private readonly messageSets: Record<string, Record<'red' | 'orange' | 'yellow' | 'green', string[]>> = {
+  private readonly messageSets: Record<
+    string,
+    Record<'red' | 'orange' | 'yellow' | 'green', string[]>
+  > = {
     Poniedziałek: {
       red: [
         '„Do końca zostało {time} – {day} się dopiero rozgrzewa i Ty niestety też.”',
@@ -273,7 +307,7 @@ export class AppComponent implements OnDestroy {
   ];
 
   private readonly timeValidatorFn = (
-    control: AbstractControl<string | null>
+    control: AbstractControl<string | null>,
   ): ValidationErrors | null => {
     const value = control.value;
     if (!value) {
@@ -284,7 +318,7 @@ export class AppComponent implements OnDestroy {
   };
 
   private readonly optionalTimeValidatorFn = (
-    control: AbstractControl<string | null>
+    control: AbstractControl<string | null>,
   ): ValidationErrors | null => {
     const value = control.value;
     if (!value) {
@@ -295,7 +329,7 @@ export class AppComponent implements OnDestroy {
   };
 
   private readonly startTimeValidatorFn = (
-    control: AbstractControl<string | null>
+    control: AbstractControl<string | null>,
   ): ValidationErrors | null => {
     const baseValidation = this.timeValidatorFn(control);
     if (baseValidation) {
@@ -315,29 +349,29 @@ export class AppComponent implements OnDestroy {
     return null;
   };
 
-  private readonly durationPartValidatorFn = (max: number) => (
-    control: AbstractControl
-  ): ValidationErrors | null => {
-    const value = control.value as number | string | null;
-    if (value === null || value === '') {
+  private readonly durationPartValidatorFn =
+    (max: number) =>
+    (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value as number | string | null;
+      if (value === null || value === '') {
+        return null;
+      }
+
+      const numericValue = Number(value);
+      if (
+        !Number.isFinite(numericValue) ||
+        !Number.isInteger(numericValue) ||
+        numericValue < 0 ||
+        numericValue > max
+      ) {
+        return { invalidDuration: true };
+      }
+
       return null;
-    }
-
-    const numericValue = Number(value);
-    if (
-      !Number.isFinite(numericValue) ||
-      !Number.isInteger(numericValue) ||
-      numericValue < 0 ||
-      numericValue > max
-    ) {
-      return { invalidDuration: true };
-    }
-
-    return null;
-  };
+    };
 
   private readonly favoriteHourValidatorFn = (
-    control: AbstractControl
+    control: AbstractControl,
   ): ValidationErrors | null => {
     const value = control.value as number | string | null;
     if (value === null || value === '') {
@@ -358,14 +392,33 @@ export class AppComponent implements OnDestroy {
 
   readonly configForm = this.fb.group({
     darkMode: this.fb.control(false, { nonNullable: true }),
-    favoriteHour: this.fb.control<number | null>(null, this.favoriteHourValidatorFn),
+    favoriteHour: this.fb.control<number | null>(
+      null,
+      this.favoriteHourValidatorFn,
+    ),
   });
 
   readonly result = signal<ResultPayload | null>(null);
   readonly scheduleError = signal<string | null>(null);
   readonly isConfigOpen = signal(false);
+  readonly isCompactMode = signal(false);
+  readonly isSwitchingToResult = signal(false);
   readonly toastMessage = signal<string | null>(null);
   readonly settings = signal<AppSettings>(this.defaultSettings);
+  readonly removingBreaks = signal<ReadonlySet<BreakFormGroup>>(
+    new Set<BreakFormGroup>(),
+  );
+  readonly highlightedBreaks = signal<ReadonlySet<BreakFormGroup>>(
+    new Set<BreakFormGroup>(),
+  );
+  readonly removingAdjustments = signal<Record<AdjustmentKind, boolean>>({
+    overtimePickup: false,
+    undertimeMakeup: false,
+  });
+  readonly highlightedAdjustments = signal<Record<AdjustmentKind, boolean>>({
+    overtimePickup: false,
+    undertimeMakeup: false,
+  });
   readonly adjustmentPanels = signal<Record<AdjustmentKind, boolean>>({
     overtimePickup: false,
     undertimeMakeup: false,
@@ -373,6 +426,9 @@ export class AppComponent implements OnDestroy {
 
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
+  private resultTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
+  private dynamicCardTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private dynamicCardHighlightTimeouts: ReturnType<typeof setTimeout>[] = [];
   private countdownTargetSeconds: number | null = null;
   private messageContext: {
     dayName: string;
@@ -388,23 +444,34 @@ export class AppComponent implements OnDestroy {
         darkMode: settings.theme === 'dark',
         favoriteHour: settings.favoriteHour,
       },
-      { emitEvent: false }
+      { emitEvent: false },
     );
 
-    const savedStartTime = this.loadStartTime();
-    const initialStartTime =
-      savedStartTime ?? this.getFavoriteStartPrefix(settings.favoriteHour);
-    if (initialStartTime) {
-      this.form.controls.startTime.setValue(initialStartTime, { emitEvent: false });
+    const savedDailyPlan = this.loadDailyPlan();
+    if (savedDailyPlan) {
+      this.restoreDailyPlan(savedDailyPlan);
+    } else {
+      const savedStartTime = this.loadStartTime();
+      const initialStartTime =
+        savedStartTime ?? this.getFavoriteStartPrefix(settings.favoriteHour);
+      if (initialStartTime) {
+        this.form.controls.startTime.setValue(initialStartTime, {
+          emitEvent: false,
+        });
+      }
     }
 
     this.form.valueChanges.subscribe(() => this.scheduleError.set(null));
     this.form.controls.startTime.valueChanges.subscribe((value) =>
-      this.persistStartTime(value)
+      this.persistStartTime(value),
     );
     this.configForm.controls.darkMode.valueChanges.subscribe(() =>
-      this.syncThemeFromConfig()
+      this.syncThemeFromConfig(),
     );
+
+    if (savedDailyPlan) {
+      this.calculate(false);
+    }
   }
 
   @HostBinding('class.dark-mode')
@@ -415,6 +482,9 @@ export class AppComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.clearCountdown();
     this.clearToast();
+    this.clearResultTransition();
+    this.clearDynamicCardTimeouts();
+    this.clearDynamicCardHighlightTimeouts();
   }
 
   get breaks(): FormArray<BreakFormGroup> {
@@ -436,7 +506,7 @@ export class AppComponent implements OnDestroy {
         darkMode: settings.theme === 'dark',
         favoriteHour: settings.favoriteHour,
       },
-      { emitEvent: false }
+      { emitEvent: false },
     );
     this.configForm.controls.favoriteHour.markAsUntouched();
     this.isConfigOpen.set(true);
@@ -467,44 +537,109 @@ export class AppComponent implements OnDestroy {
     this.showToast(
       nextSettings.favoriteHour === null
         ? 'Ulubiona godzina startu została wyczyszczona.'
-        : 'Nowa ulubiona godzina startu została zapisana.'
+        : 'Nowa ulubiona godzina startu została zapisana.',
     );
   }
 
   addBreak(): void {
     this.scheduleError.set(null);
-    this.breaks.push(
-      this.fb.group({
-        start: this.fb.control<string | null>(null, this.optionalTimeValidatorFn),
-        end: this.fb.control<string | null>(null, this.optionalTimeValidatorFn),
-      })
-    );
+    const breakGroup = this.createBreakGroup();
+    this.breaks.push(breakGroup);
+    this.highlightBreak(breakGroup);
   }
 
   removeBreak(index: number): void {
     this.scheduleError.set(null);
-    this.breaks.removeAt(index);
+    const breakGroup = this.breaks.at(index);
+    if (!breakGroup || this.isBreakRemoving(breakGroup)) {
+      return;
+    }
+
+    this.removingBreaks.update((current) => {
+      const next = new Set(current);
+      next.add(breakGroup);
+      return next;
+    });
+
+    this.queueDynamicCardRemoval(() => {
+      const currentIndex = this.breaks.controls.indexOf(breakGroup);
+      if (currentIndex > -1) {
+        this.breaks.removeAt(currentIndex);
+      }
+
+      this.removingBreaks.update((current) => {
+        const next = new Set(current);
+        next.delete(breakGroup);
+        return next;
+      });
+    });
   }
 
   showAdjustment(kind: AdjustmentKind): void {
     this.scheduleError.set(null);
-    this.adjustmentPanels.update((current) => ({
-      ...current,
-      [kind]: true,
-    }));
+    const otherKind: AdjustmentKind =
+      kind === 'overtimePickup' ? 'undertimeMakeup' : 'overtimePickup';
+
+    this.adjustmentGroup(otherKind).reset();
+    this.adjustmentPanels.set({
+      overtimePickup: kind === 'overtimePickup',
+      undertimeMakeup: kind === 'undertimeMakeup',
+    });
+    this.highlightAdjustment(kind);
   }
 
   removeAdjustment(kind: AdjustmentKind): void {
     this.scheduleError.set(null);
-    this.adjustmentGroup(kind).reset();
-    this.adjustmentPanels.update((current) => ({
+    if (!this.isAdjustmentVisible(kind) || this.isAdjustmentRemoving(kind)) {
+      return;
+    }
+
+    this.removingAdjustments.update((current) => ({
       ...current,
-      [kind]: false,
+      [kind]: true,
     }));
+
+    this.queueDynamicCardRemoval(() => {
+      this.adjustmentGroup(kind).reset();
+      this.adjustmentPanels.update((current) => ({
+        ...current,
+        [kind]: false,
+      }));
+      this.removingAdjustments.update((current) => ({
+        ...current,
+        [kind]: false,
+      }));
+    });
+  }
+
+  editPlan(): void {
+    this.clearResultTransition();
+    this.isCompactMode.set(false);
   }
 
   isAdjustmentVisible(kind: AdjustmentKind): boolean {
     return this.adjustmentPanels()[kind];
+  }
+
+  isAdjustmentRemoving(kind: AdjustmentKind): boolean {
+    return this.removingAdjustments()[kind];
+  }
+
+  isBreakRemoving(group: BreakFormGroup): boolean {
+    return this.removingBreaks().has(group);
+  }
+
+  isBreakHighlighted(group: BreakFormGroup): boolean {
+    return this.highlightedBreaks().has(group);
+  }
+
+  isAdjustmentHighlighted(kind: AdjustmentKind): boolean {
+    return this.highlightedAdjustments()[kind];
+  }
+
+  hasAnyAdjustment(): boolean {
+    const adjustmentPanels = this.adjustmentPanels();
+    return adjustmentPanels.overtimePickup || adjustmentPanels.undertimeMakeup;
   }
 
   isInvalid(control: AbstractControl): boolean {
@@ -516,16 +651,20 @@ export class AppComponent implements OnDestroy {
       return false;
     }
 
-    return !this.breaks.controls.some((group) => this.hasIncompleteBreak(group));
+    return !this.breaks.controls.some((group) =>
+      this.hasIncompleteBreak(group),
+    );
   }
 
-  calculate(): void {
+  calculate(useTransition = true): void {
     if (!this.canCalculate) {
       this.form.markAllAsTouched();
       this.breaks.controls.forEach((group) => group.markAllAsTouched());
       return;
     }
 
+    this.clearDynamicCardHighlights();
+    this.clearResultTransition();
     this.clearCountdown();
     this.countdownTargetSeconds = null;
     this.messageContext = null;
@@ -540,13 +679,15 @@ export class AppComponent implements OnDestroy {
     if (scheduleCheck.error) {
       this.scheduleError.set(scheduleCheck.error);
       this.result.set(null);
+      this.isCompactMode.set(false);
+      this.clearDailyPlan();
       return;
     }
 
     this.scheduleError.set(null);
 
     const rawEndMinutes = scheduleCheck.totalEndMinutes;
-    const totalMinutes = ((rawEndMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const totalMinutes = ((rawEndMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
 
     const startLabel = this.formatMinutes(startMinutes);
     const endTimeLabel = this.formatMinutes(totalMinutes);
@@ -584,29 +725,52 @@ export class AppComponent implements OnDestroy {
       endTimeLabel,
     );
 
-    this.result.set({
+    const nextResult: ResultPayload = {
       endTime: endTimeLabel,
       remainingLabel,
       message,
       state,
-    });
-
-    this.messageContext = {
+      startTime: startLabel,
+      adjustmentLabel: this.createAdjustmentLabel(),
+      breaksLabel: this.createBreaksLabel(),
+    };
+    const nextMessageContext = {
       dayName,
       startLabel,
       endLabel: endTimeLabel,
     };
+    const showResult = () => {
+      this.result.set(nextResult);
+      this.isCompactMode.set(true);
+      this.isSwitchingToResult.set(false);
+      this.resultTransitionTimeout = null;
 
-    if (workFinished) {
+      this.messageContext = nextMessageContext;
+      this.saveDailyPlan();
+
+      if (workFinished) {
+        return;
+      }
+
+      this.countdownTargetSeconds = targetSecondsTotal;
+      this.startCountdown();
+    };
+
+    if (useTransition && !this.isCompactMode()) {
+      this.isSwitchingToResult.set(true);
+      this.resultTransitionTimeout = setTimeout(showResult, 220);
       return;
     }
 
-    this.countdownTargetSeconds = targetSecondsTotal;
-    this.startCountdown();
+    showResult();
   }
 
   trackByIndex(_index: number, _item: unknown): number {
     return _index;
+  }
+
+  trackByBreakControl(_index: number, group: BreakFormGroup): BreakFormGroup {
+    return group;
   }
 
   hasIncompleteBreak(group: BreakFormGroup): boolean {
@@ -615,21 +779,88 @@ export class AppComponent implements OnDestroy {
     return (!!start && !end) || (!start && !!end);
   }
 
+  private createAdjustmentLabel(): string | null {
+    if (this.isAdjustmentVisible('overtimePickup')) {
+      const durationMinutes = this.getDurationMinutes(this.overtimePickup);
+      return durationMinutes > 0
+        ? `Odbiór nadgodzin: ${this.formatDurationSummary(durationMinutes)}`
+        : null;
+    }
+
+    if (this.isAdjustmentVisible('undertimeMakeup')) {
+      const durationMinutes = this.getDurationMinutes(this.undertimeMakeup);
+      return durationMinutes > 0
+        ? `Odrobienie niedoczasu: ${this.formatDurationSummary(durationMinutes)}`
+        : null;
+    }
+
+    return null;
+  }
+
+  private createBreaksLabel(): string | null {
+    const totalBreakMinutes = this.breaks.controls.reduce((sum, group) => {
+      const start = this.parseTime(group.controls.start.value);
+      const end = this.parseTime(group.controls.end.value);
+      if (start === null || end === null || end <= start) {
+        return sum;
+      }
+
+      return sum + end - start;
+    }, 0);
+
+    if (totalBreakMinutes === 0) {
+      return null;
+    }
+
+    return `Przerwy: ${this.formatDurationSummary(totalBreakMinutes)}`;
+  }
+
+  private formatDurationSummary(totalMinutes: number): string {
+    const safeMinutes = Math.max(0, totalMinutes);
+    const hours = Math.floor(safeMinutes / 60);
+    const minutes = safeMinutes % 60;
+
+    if (hours === 0) {
+      return `${minutes}min`;
+    }
+
+    if (minutes === 0) {
+      return `${hours}h`;
+    }
+
+    return `${hours}h ${minutes}min`;
+  }
+
   private createDurationGroup(): DurationFormGroup {
     return this.fb.group({
       hours: this.fb.control<number | null>(
         null,
-        this.durationPartValidatorFn(23)
+        this.durationPartValidatorFn(23),
       ),
       minutes: this.fb.control<number | null>(
         null,
-        this.durationPartValidatorFn(59)
+        this.durationPartValidatorFn(59),
+      ),
+    });
+  }
+
+  private createBreakGroup(value?: BreakSnapshot): BreakFormGroup {
+    return this.fb.group({
+      start: this.fb.control<string | null>(
+        value?.start ?? null,
+        this.optionalTimeValidatorFn,
+      ),
+      end: this.fb.control<string | null>(
+        value?.end ?? null,
+        this.optionalTimeValidatorFn,
       ),
     });
   }
 
   private adjustmentGroup(kind: AdjustmentKind): DurationFormGroup {
-    return kind === 'overtimePickup' ? this.overtimePickup : this.undertimeMakeup;
+    return kind === 'overtimePickup'
+      ? this.overtimePickup
+      : this.undertimeMakeup;
   }
 
   private getDurationMinutes(group: DurationFormGroup): number {
@@ -644,6 +875,242 @@ export class AppComponent implements OnDestroy {
     }
 
     return localStorage;
+  }
+
+  private getTodayKey(): string {
+    const today = new Date();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    return `${today.getFullYear()}-${month}-${day}`;
+  }
+
+  private loadDailyPlan(): DailyPlanSnapshot | null {
+    const storage = this.getStorage();
+    if (!storage) {
+      return null;
+    }
+
+    const rawPlan = storage.getItem(this.dailyPlanStorageKey);
+    if (!rawPlan) {
+      return null;
+    }
+
+    try {
+      const snapshot = this.normalizeDailyPlanSnapshot(JSON.parse(rawPlan));
+      if (!snapshot) {
+        storage.removeItem(this.dailyPlanStorageKey);
+        return null;
+      }
+
+      if (snapshot.date !== this.getTodayKey()) {
+        storage.removeItem(this.dailyPlanStorageKey);
+        storage.removeItem(this.startTimeStorageKey);
+        return null;
+      }
+
+      return snapshot;
+    } catch {
+      storage.removeItem(this.dailyPlanStorageKey);
+      return null;
+    }
+  }
+
+  private saveDailyPlan(): void {
+    const storage = this.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    try {
+      storage.setItem(
+        this.dailyPlanStorageKey,
+        JSON.stringify(this.createDailyPlanSnapshot()),
+      );
+    } catch {
+      return;
+    }
+  }
+
+  private clearDailyPlan(): void {
+    const storage = this.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    storage.removeItem(this.dailyPlanStorageKey);
+  }
+
+  private restoreDailyPlan(snapshot: DailyPlanSnapshot): void {
+    this.form.controls.startTime.setValue(snapshot.startTime, {
+      emitEvent: false,
+    });
+    this.breaks.clear({ emitEvent: false });
+    snapshot.breaks.forEach((breakSnapshot) =>
+      this.breaks.push(this.createBreakGroup(breakSnapshot), {
+        emitEvent: false,
+      }),
+    );
+    this.overtimePickup.setValue(snapshot.overtimePickup, { emitEvent: false });
+    this.undertimeMakeup.setValue(snapshot.undertimeMakeup, {
+      emitEvent: false,
+    });
+    this.adjustmentPanels.set({ ...snapshot.adjustmentPanels });
+    this.form.markAsPristine();
+    this.form.markAsUntouched();
+  }
+
+  private createDailyPlanSnapshot(): DailyPlanSnapshot {
+    const adjustmentPanels = this.adjustmentPanels();
+    const filledBreaks = this.breaks.controls
+      .map((group): BreakSnapshot | null => {
+        const start = this.normalizeTimeValue(group.controls.start.value);
+        const end = this.normalizeTimeValue(group.controls.end.value);
+        return start && end ? { start, end } : null;
+      })
+      .filter((value): value is BreakSnapshot => value !== null);
+
+    return {
+      date: this.getTodayKey(),
+      startTime:
+        this.normalizeTimeValue(this.form.controls.startTime.value) ?? '',
+      breaks: filledBreaks,
+      overtimePickup: adjustmentPanels.overtimePickup
+        ? this.createDurationSnapshot(this.overtimePickup)
+        : this.emptyDurationSnapshot(),
+      undertimeMakeup: adjustmentPanels.undertimeMakeup
+        ? this.createDurationSnapshot(this.undertimeMakeup)
+        : this.emptyDurationSnapshot(),
+      adjustmentPanels: { ...adjustmentPanels },
+    };
+  }
+
+  private normalizeDailyPlanSnapshot(value: unknown): DailyPlanSnapshot | null {
+    if (!this.isRecord(value)) {
+      return null;
+    }
+
+    const date = typeof value['date'] === 'string' ? value['date'] : null;
+    const startTime = this.normalizeTimeValue(value['startTime']);
+    const startMinutes = this.parseTime(startTime);
+    if (
+      !date ||
+      !startTime ||
+      startMinutes === null ||
+      startMinutes < this.minStartMinutes
+    ) {
+      return null;
+    }
+
+    const rawBreaks = value['breaks'];
+    if (!Array.isArray(rawBreaks)) {
+      return null;
+    }
+
+    const breaks: BreakSnapshot[] = [];
+    for (const rawBreak of rawBreaks) {
+      const breakSnapshot = this.normalizeBreakSnapshot(rawBreak);
+      if (!breakSnapshot) {
+        return null;
+      }
+
+      breaks.push(breakSnapshot);
+    }
+
+    return {
+      date,
+      startTime,
+      breaks,
+      overtimePickup: this.normalizeDurationSnapshot(value['overtimePickup']),
+      undertimeMakeup: this.normalizeDurationSnapshot(value['undertimeMakeup']),
+      adjustmentPanels: this.normalizeAdjustmentPanels(
+        value['adjustmentPanels'],
+      ),
+    };
+  }
+
+  private normalizeBreakSnapshot(value: unknown): BreakSnapshot | null {
+    if (!this.isRecord(value)) {
+      return null;
+    }
+
+    const start = this.normalizeTimeValue(value['start']);
+    const end = this.normalizeTimeValue(value['end']);
+    return start && end ? { start, end } : null;
+  }
+
+  private normalizeAdjustmentPanels(
+    value: unknown,
+  ): Record<AdjustmentKind, boolean> {
+    if (!this.isRecord(value)) {
+      return {
+        overtimePickup: false,
+        undertimeMakeup: false,
+      };
+    }
+
+    const overtimePickup = value['overtimePickup'] === true;
+    const undertimeMakeup = value['undertimeMakeup'] === true;
+
+    return {
+      overtimePickup,
+      undertimeMakeup: overtimePickup ? false : undertimeMakeup,
+    };
+  }
+
+  private createDurationSnapshot(group: DurationFormGroup): DurationSnapshot {
+    return {
+      hours: this.normalizeDurationPart(group.controls.hours.value, 23),
+      minutes: this.normalizeDurationPart(group.controls.minutes.value, 59),
+    };
+  }
+
+  private normalizeDurationSnapshot(value: unknown): DurationSnapshot {
+    if (!this.isRecord(value)) {
+      return this.emptyDurationSnapshot();
+    }
+
+    return {
+      hours: this.normalizeDurationPart(value['hours'], 23),
+      minutes: this.normalizeDurationPart(value['minutes'], 59),
+    };
+  }
+
+  private emptyDurationSnapshot(): DurationSnapshot {
+    return {
+      hours: null,
+      minutes: null,
+    };
+  }
+
+  private normalizeDurationPart(value: unknown, max: number): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const numericValue = Number(value);
+    if (
+      !Number.isFinite(numericValue) ||
+      !Number.isInteger(numericValue) ||
+      numericValue < 0 ||
+      numericValue > max
+    ) {
+      return null;
+    }
+
+    return numericValue;
+  }
+
+  private normalizeTimeValue(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalizedValue = value.trim().replace('.', ':');
+    return this.isTimeValid(normalizedValue) ? normalizedValue : null;
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private loadSettings(): AppSettings {
@@ -718,7 +1185,33 @@ export class AppComponent implements OnDestroy {
       return null;
     }
 
-    if (!this.isTimeValid(savedStartTime)) {
+    try {
+      const parsedStartTime = JSON.parse(savedStartTime);
+      if (this.isRecord(parsedStartTime)) {
+        const date =
+          typeof parsedStartTime['date'] === 'string'
+            ? parsedStartTime['date']
+            : null;
+        const value = this.normalizeTimeValue(parsedStartTime['value']);
+
+        if (date !== this.getTodayKey()) {
+          storage.removeItem(this.startTimeStorageKey);
+          return null;
+        }
+
+        if (value) {
+          return value;
+        }
+      }
+    } catch {
+      const legacyStartTime = this.normalizeTimeValue(savedStartTime);
+      if (legacyStartTime) {
+        this.persistStartTime(legacyStartTime);
+        return legacyStartTime;
+      }
+    }
+
+    if (!this.normalizeTimeValue(savedStartTime)) {
       storage.removeItem(this.startTimeStorageKey);
       return null;
     }
@@ -738,10 +1231,14 @@ export class AppComponent implements OnDestroy {
       return;
     }
 
-    if (this.isTimeValid(normalizedValue)) {
+    const startTime = this.normalizeTimeValue(normalizedValue);
+    if (startTime) {
       storage.setItem(
         this.startTimeStorageKey,
-        normalizedValue.replace('.', ':')
+        JSON.stringify({
+          date: this.getTodayKey(),
+          value: startTime,
+        }),
       );
     }
   }
@@ -878,7 +1375,93 @@ export class AppComponent implements OnDestroy {
     }
   }
 
-  private validateSchedule(startMinutes: number): { totalEndMinutes: number; error: string | null } {
+  private clearResultTransition(): void {
+    if (this.resultTransitionTimeout !== null) {
+      clearTimeout(this.resultTransitionTimeout);
+      this.resultTransitionTimeout = null;
+    }
+
+    this.isSwitchingToResult.set(false);
+  }
+
+  private queueDynamicCardRemoval(callback: () => void): void {
+    const timeout = setTimeout(() => {
+      callback();
+      this.dynamicCardTimeouts = this.dynamicCardTimeouts.filter(
+        (currentTimeout) => currentTimeout !== timeout,
+      );
+    }, this.dynamicCardExitMs);
+
+    this.dynamicCardTimeouts.push(timeout);
+  }
+
+  private highlightBreak(group: BreakFormGroup): void {
+    this.highlightedBreaks.update((current) => {
+      const next = new Set(current);
+      next.add(group);
+      return next;
+    });
+
+    const timeout = setTimeout(() => {
+      this.highlightedBreaks.update((current) => {
+        const next = new Set(current);
+        next.delete(group);
+        return next;
+      });
+      this.dynamicCardHighlightTimeouts =
+        this.dynamicCardHighlightTimeouts.filter(
+          (currentTimeout) => currentTimeout !== timeout,
+        );
+    }, this.dynamicCardHighlightMs);
+
+    this.dynamicCardHighlightTimeouts.push(timeout);
+  }
+
+  private highlightAdjustment(kind: AdjustmentKind): void {
+    this.highlightedAdjustments.update((current) => ({
+      ...current,
+      [kind]: true,
+    }));
+
+    const timeout = setTimeout(() => {
+      this.highlightedAdjustments.update((current) => ({
+        ...current,
+        [kind]: false,
+      }));
+      this.dynamicCardHighlightTimeouts =
+        this.dynamicCardHighlightTimeouts.filter(
+          (currentTimeout) => currentTimeout !== timeout,
+        );
+    }, this.dynamicCardHighlightMs);
+
+    this.dynamicCardHighlightTimeouts.push(timeout);
+  }
+
+  private clearDynamicCardHighlights(): void {
+    this.highlightedBreaks.set(new Set<BreakFormGroup>());
+    this.highlightedAdjustments.set({
+      overtimePickup: false,
+      undertimeMakeup: false,
+    });
+    this.clearDynamicCardHighlightTimeouts();
+  }
+
+  private clearDynamicCardTimeouts(): void {
+    this.dynamicCardTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.dynamicCardTimeouts = [];
+  }
+
+  private clearDynamicCardHighlightTimeouts(): void {
+    this.dynamicCardHighlightTimeouts.forEach((timeout) =>
+      clearTimeout(timeout),
+    );
+    this.dynamicCardHighlightTimeouts = [];
+  }
+
+  private validateSchedule(startMinutes: number): {
+    totalEndMinutes: number;
+    error: string | null;
+  } {
     if (startMinutes < this.minStartMinutes) {
       return {
         totalEndMinutes: startMinutes,
@@ -895,7 +1478,9 @@ export class AppComponent implements OnDestroy {
         }
         return { start, end };
       })
-      .filter((value): value is { start: number; end: number } => value !== null)
+      .filter(
+        (value): value is { start: number; end: number } => value !== null,
+      )
       .sort((a, b) => a.start - b.start);
 
     let previousEnd = startMinutes;
@@ -912,7 +1497,8 @@ export class AppComponent implements OnDestroy {
       if (interval.start < previousEnd) {
         return {
           totalEndMinutes: startMinutes,
-          error: 'Przerwy nie mogą na siebie nachodzić ani zaczynać się w tych samych godzinach.',
+          error:
+            'Przerwy nie mogą na siebie nachodzić ani zaczynać się w tych samych godzinach.',
         };
       }
 
@@ -923,7 +1509,10 @@ export class AppComponent implements OnDestroy {
         };
       }
 
-      if (interval.start > this.maxEndMinutes || interval.end > this.maxEndMinutes) {
+      if (
+        interval.start > this.maxEndMinutes ||
+        interval.end > this.maxEndMinutes
+      ) {
         return {
           totalEndMinutes: startMinutes,
           error: 'Cały plan musi zmieścić się maksymalnie do 21:00.',
@@ -968,7 +1557,8 @@ export class AppComponent implements OnDestroy {
     if (totalEndMinutes > this.maxEndMinutes) {
       return {
         totalEndMinutes,
-        error: 'Koniec pracy wypada po 21:00. Skróć przerwy albo zacznij wcześniej.',
+        error:
+          'Koniec pracy wypada po 21:00. Skróć przerwy albo zacznij wcześniej.',
       };
     }
 
@@ -984,24 +1574,43 @@ export class AppComponent implements OnDestroy {
     endLabel: string,
   ): string {
     if (state === 'beforeStart') {
-      return this.resolveTemplate(this.beforeStartMessages, dayName, remainingLabel, startLabel, endLabel);
+      return this.resolveTemplate(
+        this.beforeStartMessages,
+        dayName,
+        remainingLabel,
+        startLabel,
+        endLabel,
+      );
     }
 
     if (state === 'complete') {
-      return this.resolveTemplate(this.afterWorkMessages, dayName, remainingLabel, startLabel, endLabel);
+      return this.resolveTemplate(
+        this.afterWorkMessages,
+        dayName,
+        remainingLabel,
+        startLabel,
+        endLabel,
+      );
     }
 
-    const range: 'red' | 'orange' | 'yellow' | 'green' = diffMinutes > 360
-      ? 'red'
-      : diffMinutes > 240
-        ? 'orange'
-        : diffMinutes >= 60
-          ? 'yellow'
-          : 'green';
+    const range: 'red' | 'orange' | 'yellow' | 'green' =
+      diffMinutes > 360
+        ? 'red'
+        : diffMinutes > 240
+          ? 'orange'
+          : diffMinutes >= 60
+            ? 'yellow'
+            : 'green';
 
     const messageDay = this.messageSets[dayName] ? dayName : 'Poniedziałek';
     const templates = this.messageSets[messageDay][range];
-    return this.resolveTemplate(templates, dayName, remainingLabel, startLabel, endLabel);
+    return this.resolveTemplate(
+      templates,
+      dayName,
+      remainingLabel,
+      startLabel,
+      endLabel,
+    );
   }
 
   private resolveTemplate(
@@ -1012,7 +1621,13 @@ export class AppComponent implements OnDestroy {
     endLabel: string,
   ): string {
     const template = templates[Math.floor(Math.random() * templates.length)];
-    return this.formatTemplate(template, dayName, remainingLabel, startLabel, endLabel);
+    return this.formatTemplate(
+      template,
+      dayName,
+      remainingLabel,
+      startLabel,
+      endLabel,
+    );
   }
 
   private formatTemplate(

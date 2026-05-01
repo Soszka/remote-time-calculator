@@ -1,6 +1,10 @@
 <main class="app-wrapper">
-  <section class="panel">
-    <header class="panel-header">
+  <section
+    class="panel"
+    [class.compact-panel]="isCompactMode()"
+    [class.switching-to-result]="isSwitchingToResult()"
+  >
+    <header class="panel-header" *ngIf="!isCompactMode()">
       <h1>Kalkulator końca pracy</h1>
       <button
         type="button"
@@ -8,12 +12,18 @@
         (click)="openConfig()"
         aria-label="Otwórz konfigurację"
         data-tooltip="Konfiguracja"
-      >
-        ⚙
-      </button>
-    </header>
+        >
+          ⚙
+        </button>
+      </header>
 
-    <form class="form" [formGroup]="form" novalidate>
+    <form
+      class="form fade-in"
+      *ngIf="!isCompactMode()"
+      [formGroup]="form"
+      [class.form-switching-out]="isSwitchingToResult()"
+      novalidate
+    >
       <div class="form-row">
         <label for="start-time">Start pracy</label>
         <input
@@ -60,7 +70,7 @@
           type="button"
           class="ghost-button"
           (click)="showAdjustment('overtimePickup')"
-          [disabled]="isAdjustmentVisible('overtimePickup')"
+          [disabled]="hasAnyAdjustment()"
         >
           + Odbiór nadgodzin
         </button>
@@ -68,7 +78,7 @@
           type="button"
           class="ghost-button"
           (click)="showAdjustment('undertimeMakeup')"
-          [disabled]="isAdjustmentVisible('undertimeMakeup')"
+          [disabled]="hasAnyAdjustment()"
         >
           + Odrobienie niedoczasu
         </button>
@@ -83,9 +93,11 @@
             *ngFor="
               let breakGroup of breaks.controls;
               let i = index;
-              trackBy: trackByIndex
+              trackBy: trackByBreakControl
             "
             [formGroupName]="i"
+            [class.dynamic-card-leaving]="isBreakRemoving(breakGroup)"
+            [class.dynamic-card-sweep]="isBreakHighlighted(breakGroup)"
           >
             <div class="form-row inline">
               <label [for]="'break-start-' + i">Start</label>
@@ -131,6 +143,7 @@
               type="button"
               class="remove-button"
               (click)="removeBreak(i)"
+              [disabled]="isBreakRemoving(breakGroup)"
               aria-label="Usuń przerwę"
             >
               ✖
@@ -157,6 +170,8 @@
           class="adjustment-row"
           *ngIf="isAdjustmentVisible('overtimePickup')"
           formGroupName="overtimePickup"
+          [class.dynamic-card-leaving]="isAdjustmentRemoving('overtimePickup')"
+          [class.dynamic-card-sweep]="isAdjustmentHighlighted('overtimePickup')"
         >
           <div class="adjustment-title">Odbiór nadgodzin</div>
 
@@ -204,6 +219,7 @@
             type="button"
             class="remove-button"
             (click)="removeAdjustment('overtimePickup')"
+            [disabled]="isAdjustmentRemoving('overtimePickup')"
             aria-label="Usuń odbiór nadgodzin"
           >
             ✖
@@ -214,6 +230,8 @@
           class="adjustment-row"
           *ngIf="isAdjustmentVisible('undertimeMakeup')"
           formGroupName="undertimeMakeup"
+          [class.dynamic-card-leaving]="isAdjustmentRemoving('undertimeMakeup')"
+          [class.dynamic-card-sweep]="isAdjustmentHighlighted('undertimeMakeup')"
         >
           <div class="adjustment-title">Odrobienie niedoczasu</div>
 
@@ -261,6 +279,7 @@
             type="button"
             class="remove-button"
             (click)="removeAdjustment('undertimeMakeup')"
+            [disabled]="isAdjustmentRemoving('undertimeMakeup')"
             aria-label="Usuń odrobienie niedoczasu"
           >
             ✖
@@ -272,7 +291,7 @@
         type="button"
         class="primary-button"
         (click)="calculate()"
-        [disabled]="!canCalculate"
+        [disabled]="!canCalculate || isSwitchingToResult()"
       >
         Przelicz
       </button>
@@ -282,11 +301,12 @@
       </div>
     </form>
 
-    <section *ngIf="result() as payload" class="result-block">
+    <section *ngIf="result() as payload" class="result-block result-reveal">
       <div
         class="card highlight-card fade-in"
+        [class.compact-highlight]="isCompactMode()"
         [class.complete]="payload.state === 'complete'"
-      >
+        >
         <div
           class="celebration"
           *ngIf="payload.state === 'complete'"
@@ -333,6 +353,20 @@
           <div class="comet comet-left"></div>
           <div class="comet comet-right"></div>
         </div>
+        <div class="compact-toolbar" *ngIf="isCompactMode()">
+          <div class="compact-details">
+            <span class="compact-detail">Start: {{ payload.startTime }}</span>
+            <span class="compact-detail" *ngIf="payload.adjustmentLabel">
+              {{ payload.adjustmentLabel }}
+            </span>
+            <span class="compact-detail" *ngIf="payload.breaksLabel">
+              {{ payload.breaksLabel }}
+            </span>
+          </div>
+          <button type="button" class="edit-button" (click)="editPlan()">
+            Edytuj
+          </button>
+        </div>
         <div class="summary-line">
           <article class="summary-item">
             <div class="summary-icon" aria-hidden="true">🚪</div>
@@ -349,8 +383,13 @@
             </div>
           </article>
         </div>
+        <div class="compact-feedback-box" *ngIf="isCompactMode()">
+          <p class="compact-feedback">
+            {{ payload.message }}
+          </p>
+        </div>
       </div>
-      <div class="card message-card fade-in">
+      <div class="card message-card fade-in" *ngIf="!isCompactMode()">
         <p>{{ payload.message }}</p>
       </div>
     </section>
