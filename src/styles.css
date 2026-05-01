@@ -17,6 +17,428 @@ input {
   font-family: inherit;
 }
 
+app-root {
+  --accent-text: #4338ca;
+  --accent-solid: #6366f1;
+  --accent-gradient-start: #4f46e5;
+  --accent-gradient-end: #22d3ee;
+  --accent-save-gradient-end: #06b6d4;
+  --accent-control-bg: rgba(99, 102, 241, 0.12);
+  --accent-control-bg-hover: rgba(99, 102, 241, 0.18);
+  --accent-focus-ring: rgba(99, 102, 241, 0.45);
+  --accent-focus-ring-soft: rgba(99, 102, 241, 0.4);
+  --accent-input-inset: rgba(99, 102, 241, 0.08);
+  --accent-input-shadow: rgba(99, 102, 241, 0.2);
+  --accent-ghost-hover: rgba(99, 102, 241, 0.15);
+  --accent-row-bg: rgba(99, 102, 241, 0.06);
+  --accent-alt-row-bg: rgba(14, 165, 233, 0.08);
+  --accent-segment-bg: rgba(99, 102, 241, 0.1);
+  --accent-primary-shadow: rgba(79, 70, 229, 0.22);
+  --accent-primary-shadow-hover: rgba(79, 70, 229, 0.28);
+  --accent-save-shadow: rgba(79, 70, 229, 0.2);
+  --accent-save-shadow-hover: rgba(6, 182, 212, 0.24);
+  --accent-settings-shadow: rgba(67, 56, 202, 0.14);
+  --accent-sweep-primary: rgba(79, 70, 229, 0.22);
+  --accent-sweep-secondary: rgba(14, 165, 233, 0.2);
+  --accent-dynamic-shadow: rgba(14, 165, 233, 0.16);
+  --accent-dynamic-shadow-soft: rgba(14, 165, 233, 0.1);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(79, 70, 229, 0.34),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(34, 211, 238, 0.34),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #4f46e5 0%, #5b5fe8 50%, #0891b2 100%);
+  --accent-button-border: rgba(255, 255, 255, 0.24);
+  --accent-button-ambient: rgba(79, 70, 229, 0.2);
+  --accent-highlight-background: linear-gradient(
+    145deg,
+    rgba(79, 70, 229, 0.92),
+    rgba(34, 211, 238, 0.92)
+  );
+  --accent-highlight-border: none;
+  --accent-highlight-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  --accent-highlight-text-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+  --accent-summary-border: none;
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.35));
+  --accent-comet-tail: rgba(79, 70, 229, 0);
+  --accent-firework-glow: rgba(79, 70, 229, 0.65);
+  --accent-toast-bg: #e6fff7;
+}
+
+app-root.accent-green {
+  --accent-text: #047857;
+  --accent-solid: #10b981;
+  --accent-gradient-start: #059669;
+  --accent-gradient-end: #34d399;
+  --accent-save-gradient-end: #14b8a6;
+  --accent-control-bg: rgba(16, 185, 129, 0.12);
+  --accent-control-bg-hover: rgba(16, 185, 129, 0.18);
+  --accent-focus-ring: rgba(16, 185, 129, 0.42);
+  --accent-focus-ring-soft: rgba(16, 185, 129, 0.36);
+  --accent-input-inset: rgba(16, 185, 129, 0.09);
+  --accent-input-shadow: rgba(16, 185, 129, 0.18);
+  --accent-ghost-hover: rgba(16, 185, 129, 0.14);
+  --accent-row-bg: rgba(16, 185, 129, 0.07);
+  --accent-alt-row-bg: rgba(5, 150, 105, 0.09);
+  --accent-segment-bg: rgba(16, 185, 129, 0.1);
+  --accent-primary-shadow: rgba(5, 150, 105, 0.2);
+  --accent-primary-shadow-hover: rgba(20, 184, 166, 0.25);
+  --accent-save-shadow: rgba(5, 150, 105, 0.19);
+  --accent-save-shadow-hover: rgba(20, 184, 166, 0.24);
+  --accent-settings-shadow: rgba(5, 150, 105, 0.14);
+  --accent-sweep-primary: rgba(5, 150, 105, 0.22);
+  --accent-sweep-secondary: rgba(20, 184, 166, 0.2);
+  --accent-dynamic-shadow: rgba(16, 185, 129, 0.15);
+  --accent-dynamic-shadow-soft: rgba(16, 185, 129, 0.1);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(16, 185, 129, 0.32),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(45, 212, 191, 0.32),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #047857 0%, #059669 50%, #0f766e 100%);
+  --accent-button-border: rgba(255, 255, 255, 0.24);
+  --accent-button-ambient: rgba(5, 150, 105, 0.19);
+  --accent-highlight-background: linear-gradient(
+    145deg,
+    rgba(5, 150, 105, 0.92),
+    rgba(45, 212, 191, 0.92)
+  );
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(5, 150, 105, 0.32));
+  --accent-comet-tail: rgba(5, 150, 105, 0);
+  --accent-firework-glow: rgba(20, 184, 166, 0.62);
+}
+
+app-root.accent-red {
+  --accent-text: #be123c;
+  --accent-solid: #e11d48;
+  --accent-gradient-start: #be123c;
+  --accent-gradient-end: #fb7185;
+  --accent-save-gradient-end: #f43f5e;
+  --accent-control-bg: rgba(225, 29, 72, 0.12);
+  --accent-control-bg-hover: rgba(225, 29, 72, 0.18);
+  --accent-focus-ring: rgba(225, 29, 72, 0.4);
+  --accent-focus-ring-soft: rgba(225, 29, 72, 0.35);
+  --accent-input-inset: rgba(225, 29, 72, 0.09);
+  --accent-input-shadow: rgba(225, 29, 72, 0.17);
+  --accent-ghost-hover: rgba(225, 29, 72, 0.13);
+  --accent-row-bg: rgba(225, 29, 72, 0.07);
+  --accent-alt-row-bg: rgba(244, 63, 94, 0.08);
+  --accent-segment-bg: rgba(225, 29, 72, 0.09);
+  --accent-primary-shadow: rgba(190, 18, 60, 0.2);
+  --accent-primary-shadow-hover: rgba(225, 29, 72, 0.24);
+  --accent-save-shadow: rgba(190, 18, 60, 0.18);
+  --accent-save-shadow-hover: rgba(244, 63, 94, 0.24);
+  --accent-settings-shadow: rgba(190, 18, 60, 0.13);
+  --accent-sweep-primary: rgba(190, 18, 60, 0.2);
+  --accent-sweep-secondary: rgba(244, 63, 94, 0.18);
+  --accent-dynamic-shadow: rgba(225, 29, 72, 0.14);
+  --accent-dynamic-shadow-soft: rgba(225, 29, 72, 0.09);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(225, 29, 72, 0.3),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(251, 113, 133, 0.3),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #9f1239 0%, #be123c 50%, #e11d48 100%);
+  --accent-button-border: rgba(255, 255, 255, 0.22);
+  --accent-button-ambient: rgba(190, 18, 60, 0.18);
+  --accent-highlight-background: linear-gradient(
+    145deg,
+    rgba(190, 18, 60, 0.92),
+    rgba(251, 113, 133, 0.9)
+  );
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(190, 18, 60, 0.32));
+  --accent-comet-tail: rgba(190, 18, 60, 0);
+  --accent-firework-glow: rgba(225, 29, 72, 0.6);
+}
+
+app-root.accent-yellow {
+  --accent-text: #a16207;
+  --accent-solid: #d97706;
+  --accent-gradient-start: #b45309;
+  --accent-gradient-end: #f59e0b;
+  --accent-save-gradient-end: #eab308;
+  --accent-control-bg: rgba(217, 119, 6, 0.12);
+  --accent-control-bg-hover: rgba(217, 119, 6, 0.18);
+  --accent-focus-ring: rgba(217, 119, 6, 0.4);
+  --accent-focus-ring-soft: rgba(217, 119, 6, 0.34);
+  --accent-input-inset: rgba(217, 119, 6, 0.08);
+  --accent-input-shadow: rgba(217, 119, 6, 0.16);
+  --accent-ghost-hover: rgba(217, 119, 6, 0.13);
+  --accent-row-bg: rgba(217, 119, 6, 0.07);
+  --accent-alt-row-bg: rgba(234, 179, 8, 0.09);
+  --accent-segment-bg: rgba(217, 119, 6, 0.09);
+  --accent-primary-shadow: rgba(180, 83, 9, 0.2);
+  --accent-primary-shadow-hover: rgba(217, 119, 6, 0.24);
+  --accent-save-shadow: rgba(180, 83, 9, 0.18);
+  --accent-save-shadow-hover: rgba(234, 179, 8, 0.24);
+  --accent-settings-shadow: rgba(180, 83, 9, 0.13);
+  --accent-sweep-primary: rgba(180, 83, 9, 0.2);
+  --accent-sweep-secondary: rgba(234, 179, 8, 0.18);
+  --accent-dynamic-shadow: rgba(217, 119, 6, 0.14);
+  --accent-dynamic-shadow-soft: rgba(217, 119, 6, 0.09);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(217, 119, 6, 0.3),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(234, 179, 8, 0.3),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%);
+  --accent-button-border: rgba(255, 255, 255, 0.24);
+  --accent-button-ambient: rgba(180, 83, 9, 0.17);
+  --accent-highlight-background: linear-gradient(
+    145deg,
+    rgba(180, 83, 9, 0.92),
+    rgba(245, 158, 11, 0.9)
+  );
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(180, 83, 9, 0.32));
+  --accent-comet-tail: rgba(180, 83, 9, 0);
+  --accent-firework-glow: rgba(217, 119, 6, 0.58);
+}
+
+app-root.dark-mode {
+  --accent-text: #5eead4;
+  --accent-solid: #14b8a6;
+  --accent-gradient-start: #0f766e;
+  --accent-gradient-end: #22c55e;
+  --accent-save-gradient-end: #22c55e;
+  --accent-control-bg: rgba(20, 184, 166, 0.16);
+  --accent-control-bg-hover: rgba(20, 184, 166, 0.24);
+  --accent-focus-ring: rgba(20, 184, 166, 0.45);
+  --accent-focus-ring-soft: rgba(20, 184, 166, 0.38);
+  --accent-input-inset: rgba(148, 163, 184, 0.18);
+  --accent-input-shadow: rgba(20, 184, 166, 0.18);
+  --accent-ghost-hover: rgba(20, 184, 166, 0.14);
+  --accent-row-bg: rgba(20, 184, 166, 0.09);
+  --accent-alt-row-bg: rgba(139, 92, 246, 0.13);
+  --accent-segment-bg: rgba(148, 163, 184, 0.14);
+  --accent-primary-shadow: rgba(34, 197, 94, 0.16);
+  --accent-primary-shadow-hover: rgba(20, 184, 166, 0.22);
+  --accent-save-shadow: rgba(34, 197, 94, 0.18);
+  --accent-save-shadow-hover: rgba(20, 184, 166, 0.24);
+  --accent-settings-shadow: rgba(20, 184, 166, 0.14);
+  --accent-sweep-primary: rgba(255, 255, 255, 0.18);
+  --accent-sweep-secondary: rgba(255, 255, 255, 0.04);
+  --accent-dynamic-shadow: rgba(20, 184, 166, 0.14);
+  --accent-dynamic-shadow-soft: rgba(20, 184, 166, 0.09);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(20, 184, 166, 0.22),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(34, 197, 94, 0.22),
+      transparent 36%
+    ),
+    linear-gradient(135deg, #17242a 0%, #13231f 50%, #17242a 100%);
+  --accent-button-border: rgba(94, 234, 212, 0.22);
+  --accent-button-ambient: rgba(20, 184, 166, 0.12);
+  --accent-highlight-background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(45, 212, 191, 0.24),
+      transparent 36%
+    ),
+    linear-gradient(145deg, #23272f 0%, #171a20 58%, #102f2b 100%);
+  --accent-highlight-border: 1px solid rgba(125, 249, 232, 0.32);
+  --accent-highlight-shadow:
+    0 0 0 1px rgba(94, 234, 212, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+  --accent-highlight-text-shadow: none;
+  --accent-summary-border: 1px solid rgba(94, 234, 212, 0.14);
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(20, 184, 166, 0.34));
+  --accent-comet-tail: rgba(20, 184, 166, 0);
+  --accent-firework-glow: rgba(20, 184, 166, 0.58);
+  --accent-toast-bg: #e6fff7;
+}
+
+app-root.dark-mode.accent-violet {
+  --accent-text: #93c5fd;
+  --accent-solid: #3b82f6;
+  --accent-gradient-start: #1d4ed8;
+  --accent-gradient-end: #7c3aed;
+  --accent-save-gradient-end: #6366f1;
+  --accent-control-bg: rgba(59, 130, 246, 0.15);
+  --accent-control-bg-hover: rgba(59, 130, 246, 0.23);
+  --accent-focus-ring: rgba(96, 165, 250, 0.45);
+  --accent-focus-ring-soft: rgba(96, 165, 250, 0.36);
+  --accent-input-shadow: rgba(59, 130, 246, 0.17);
+  --accent-ghost-hover: rgba(59, 130, 246, 0.13);
+  --accent-row-bg: rgba(59, 130, 246, 0.08);
+  --accent-alt-row-bg: rgba(124, 58, 237, 0.12);
+  --accent-primary-shadow: rgba(59, 130, 246, 0.16);
+  --accent-primary-shadow-hover: rgba(96, 165, 250, 0.22);
+  --accent-save-shadow: rgba(59, 130, 246, 0.17);
+  --accent-save-shadow-hover: rgba(124, 58, 237, 0.22);
+  --accent-settings-shadow: rgba(59, 130, 246, 0.14);
+  --accent-dynamic-shadow: rgba(59, 130, 246, 0.14);
+  --accent-dynamic-shadow-soft: rgba(59, 130, 246, 0.09);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(96, 165, 250, 0.2),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(124, 58, 237, 0.2),
+      transparent 36%
+    ),
+    linear-gradient(135deg, #1b2535 0%, #182036 50%, #1b2535 100%);
+  --accent-button-border: rgba(147, 197, 253, 0.2);
+  --accent-button-ambient: rgba(96, 165, 250, 0.12);
+  --accent-highlight-background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(96, 165, 250, 0.22),
+      transparent 36%
+    ),
+    linear-gradient(145deg, #23272f 0%, #171a20 58%, #162044 100%);
+  --accent-highlight-border: 1px solid rgba(147, 197, 253, 0.3);
+  --accent-highlight-shadow:
+    0 0 0 1px rgba(96, 165, 250, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+  --accent-summary-border: 1px solid rgba(147, 197, 253, 0.14);
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(96, 165, 250, 0.34));
+  --accent-comet-tail: rgba(59, 130, 246, 0);
+  --accent-firework-glow: rgba(96, 165, 250, 0.58);
+  --accent-toast-bg: #e0e7ff;
+}
+
+app-root.dark-mode.accent-red {
+  --accent-text: #fda4af;
+  --accent-solid: #f43f5e;
+  --accent-gradient-start: #9f1239;
+  --accent-gradient-end: #e11d48;
+  --accent-save-gradient-end: #f43f5e;
+  --accent-control-bg: rgba(244, 63, 94, 0.15);
+  --accent-control-bg-hover: rgba(244, 63, 94, 0.23);
+  --accent-focus-ring: rgba(251, 113, 133, 0.44);
+  --accent-focus-ring-soft: rgba(251, 113, 133, 0.36);
+  --accent-input-shadow: rgba(244, 63, 94, 0.17);
+  --accent-ghost-hover: rgba(244, 63, 94, 0.13);
+  --accent-row-bg: rgba(244, 63, 94, 0.08);
+  --accent-alt-row-bg: rgba(236, 72, 153, 0.11);
+  --accent-primary-shadow: rgba(244, 63, 94, 0.15);
+  --accent-primary-shadow-hover: rgba(251, 113, 133, 0.22);
+  --accent-save-shadow: rgba(244, 63, 94, 0.16);
+  --accent-save-shadow-hover: rgba(251, 113, 133, 0.22);
+  --accent-settings-shadow: rgba(244, 63, 94, 0.14);
+  --accent-dynamic-shadow: rgba(244, 63, 94, 0.13);
+  --accent-dynamic-shadow-soft: rgba(244, 63, 94, 0.09);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(244, 63, 94, 0.18),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(251, 113, 133, 0.18),
+      transparent 36%
+    ),
+    linear-gradient(135deg, #251a21 0%, #24151b 50%, #251a21 100%);
+  --accent-button-border: rgba(251, 113, 133, 0.2);
+  --accent-button-ambient: rgba(244, 63, 94, 0.11);
+  --accent-highlight-background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(251, 113, 133, 0.2),
+      transparent 36%
+    ),
+    linear-gradient(145deg, #25232c 0%, #18171d 58%, #34131d 100%);
+  --accent-highlight-border: 1px solid rgba(251, 113, 133, 0.3);
+  --accent-highlight-shadow:
+    0 0 0 1px rgba(251, 113, 133, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+  --accent-summary-border: 1px solid rgba(251, 113, 133, 0.14);
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(251, 113, 133, 0.32));
+  --accent-comet-tail: rgba(244, 63, 94, 0);
+  --accent-firework-glow: rgba(251, 113, 133, 0.56);
+  --accent-toast-bg: #ffe4e6;
+}
+
+app-root.dark-mode.accent-yellow {
+  --accent-text: #fde68a;
+  --accent-solid: #eab308;
+  --accent-gradient-start: #713f12;
+  --accent-gradient-end: #d97706;
+  --accent-save-gradient-end: #eab308;
+  --accent-control-bg: rgba(234, 179, 8, 0.14);
+  --accent-control-bg-hover: rgba(234, 179, 8, 0.22);
+  --accent-focus-ring: rgba(250, 204, 21, 0.42);
+  --accent-focus-ring-soft: rgba(250, 204, 21, 0.34);
+  --accent-input-shadow: rgba(234, 179, 8, 0.16);
+  --accent-ghost-hover: rgba(234, 179, 8, 0.12);
+  --accent-row-bg: rgba(234, 179, 8, 0.08);
+  --accent-alt-row-bg: rgba(217, 119, 6, 0.11);
+  --accent-primary-shadow: rgba(234, 179, 8, 0.14);
+  --accent-primary-shadow-hover: rgba(250, 204, 21, 0.2);
+  --accent-save-shadow: rgba(234, 179, 8, 0.15);
+  --accent-save-shadow-hover: rgba(250, 204, 21, 0.2);
+  --accent-settings-shadow: rgba(234, 179, 8, 0.13);
+  --accent-dynamic-shadow: rgba(234, 179, 8, 0.12);
+  --accent-dynamic-shadow-soft: rgba(234, 179, 8, 0.08);
+  --accent-button-background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(234, 179, 8, 0.18),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 82% 50%,
+      rgba(250, 204, 21, 0.18),
+      transparent 36%
+    ),
+    linear-gradient(135deg, #252116 0%, #211c12 50%, #252116 100%);
+  --accent-button-border: rgba(250, 204, 21, 0.2);
+  --accent-button-ambient: rgba(234, 179, 8, 0.1);
+  --accent-highlight-background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(250, 204, 21, 0.2),
+      transparent 36%
+    ),
+    linear-gradient(145deg, #24231c 0%, #1b1a16 58%, #35270f 100%);
+  --accent-highlight-border: 1px solid rgba(250, 204, 21, 0.28);
+  --accent-highlight-shadow:
+    0 0 0 1px rgba(250, 204, 21, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+  --accent-summary-border: 1px solid rgba(250, 204, 21, 0.13);
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.3));
+  --accent-comet-tail: rgba(234, 179, 8, 0);
+  --accent-firework-glow: rgba(250, 204, 21, 0.52);
+  --accent-toast-bg: #fef3c7;
+}
+
 app-root input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
@@ -35,7 +457,7 @@ app-root .icon-button.settings-button {
   height: 54px;
   flex-basis: 54px;
   font-size: 1.65rem;
-  box-shadow: 0 10px 24px rgba(67, 56, 202, 0.14);
+  box-shadow: 0 10px 24px var(--accent-settings-shadow);
 }
 
 app-root .icon-button.settings-button::after,
@@ -93,7 +515,7 @@ app-root .icon-button.settings-button:hover {
 }
 
 app-root.dark-mode .icon-button.settings-button {
-  box-shadow: 0 10px 24px rgba(20, 184, 166, 0.14);
+  box-shadow: 0 10px 24px var(--accent-settings-shadow);
 }
 
 app-root.dark-mode .icon-button.settings-button::after,
@@ -104,6 +526,124 @@ app-root.dark-mode .icon-button.settings-button::before {
 app-root.dark-mode .icon-button.settings-button::after {
   color: #111827;
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
+}
+
+app-root .accent-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  padding: 0.15rem 0 0.1rem;
+}
+
+app-root .accent-swatch {
+  --swatch-gradient: linear-gradient(135deg, #4f46e5, #22d3ee);
+  --swatch-shadow: rgba(79, 70, 229, 0.22);
+  position: relative;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: var(--swatch-gradient);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.38),
+    0 10px 20px var(--swatch-shadow);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+app-root .accent-swatch::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at 32% 24%,
+    rgba(255, 255, 255, 0.48),
+    rgba(255, 255, 255, 0) 56%
+  );
+  pointer-events: none;
+}
+
+app-root .accent-swatch:hover {
+  filter: saturate(1.08) brightness(1.03);
+  transform: translateY(-1px) scale(1.03);
+}
+
+app-root .accent-swatch:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 4px;
+}
+
+app-root .accent-swatch.active {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.98),
+    0 0 0 5px var(--accent-focus-ring),
+    0 12px 24px var(--swatch-shadow);
+}
+
+app-root.dark-mode .accent-swatch.active {
+  box-shadow:
+    0 0 0 2px #242831,
+    0 0 0 5px var(--accent-focus-ring),
+    0 12px 24px var(--swatch-shadow);
+}
+
+app-root .accent-swatch-violet {
+  --swatch-gradient: linear-gradient(135deg, #4f46e5, #22d3ee);
+  --swatch-shadow: rgba(79, 70, 229, 0.22);
+}
+
+app-root .accent-swatch-green {
+  --swatch-gradient: linear-gradient(135deg, #059669, #34d399);
+  --swatch-shadow: rgba(5, 150, 105, 0.22);
+}
+
+app-root .accent-swatch-red {
+  --swatch-gradient: linear-gradient(135deg, #be123c, #fb7185);
+  --swatch-shadow: rgba(190, 18, 60, 0.2);
+}
+
+app-root .accent-swatch-yellow {
+  --swatch-gradient: linear-gradient(135deg, #b45309, #fde047);
+  --swatch-shadow: rgba(180, 83, 9, 0.2);
+}
+
+app-root.dark-mode .accent-swatch-violet {
+  --swatch-gradient: linear-gradient(135deg, #1d4ed8, #7c3aed);
+  --swatch-shadow: rgba(96, 165, 250, 0.22);
+}
+
+app-root.dark-mode .accent-swatch-green {
+  --swatch-gradient: linear-gradient(135deg, #0f766e, #22c55e);
+  --swatch-shadow: rgba(20, 184, 166, 0.22);
+}
+
+app-root.dark-mode .accent-swatch-red {
+  --swatch-gradient: linear-gradient(135deg, #9f1239, #f43f5e);
+  --swatch-shadow: rgba(251, 113, 133, 0.2);
+}
+
+app-root.dark-mode .accent-swatch-yellow {
+  --swatch-gradient: linear-gradient(135deg, #713f12, #eab308);
+  --swatch-shadow: rgba(250, 204, 21, 0.18);
+}
+
+app-root .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 app-root .favorite-save-row {
@@ -117,11 +657,15 @@ app-root .save-button {
   border: none;
   border-radius: 14px;
   padding: 0 1rem;
-  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  background: linear-gradient(
+    135deg,
+    var(--accent-gradient-start),
+    var(--accent-save-gradient-end)
+  );
   color: #f8fafc;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 12px 24px var(--accent-save-shadow);
   transition:
     transform 0.2s ease,
     filter 0.2s ease,
@@ -131,7 +675,7 @@ app-root .save-button {
 app-root .save-button:hover {
   transform: translateY(-1px);
   filter: saturate(1.08) brightness(1.03);
-  box-shadow: 0 15px 28px rgba(6, 182, 212, 0.24);
+  box-shadow: 0 15px 28px var(--accent-save-shadow-hover);
 }
 
 app-root .save-button:disabled {
@@ -148,18 +692,123 @@ app-root .save-button:disabled:hover {
 }
 
 app-root.dark-mode .save-button {
-  background: linear-gradient(135deg, #0f766e, #22c55e);
+  background: linear-gradient(
+    135deg,
+    var(--accent-gradient-start),
+    var(--accent-save-gradient-end)
+  );
   color: #f8fafc;
-  box-shadow: 0 12px 24px rgba(34, 197, 94, 0.18);
+  box-shadow: 0 12px 24px var(--accent-save-shadow);
 }
 
 app-root.dark-mode .save-button:hover {
-  box-shadow: 0 15px 30px rgba(20, 184, 166, 0.24);
+  box-shadow: 0 15px 30px var(--accent-save-shadow-hover);
 }
 
 app-root.dark-mode .save-button:disabled:hover {
   filter: none;
   box-shadow: none;
+}
+
+app-root .primary-button {
+  border: 1px solid var(--accent-button-border);
+  border-radius: 18px;
+  padding: 1.08rem 1.2rem;
+  font-size: 1.12rem;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  background: var(--accent-button-background);
+  background-position: 50% 50%;
+  background-size: 145% 140%;
+  color: #fff;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  text-shadow: 0 1px 14px rgba(15, 23, 42, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 22px var(--accent-button-ambient),
+    0 4px 12px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease,
+    background-position 0.42s ease,
+    background-size 0.42s ease;
+}
+
+app-root .primary-button span {
+  position: relative;
+  z-index: 1;
+}
+
+app-root .primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+app-root .primary-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: saturate(1.06) brightness(1.03);
+  background-position: 100% 50%;
+  background-size: 170% 145%;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 13px 26px var(--accent-primary-shadow-hover),
+    0 6px 14px rgba(15, 23, 42, 0.1);
+}
+
+app-root.dark-mode .primary-button {
+  background: var(--accent-button-background);
+  color: #f8fafc;
+  text-shadow: 0 0 18px rgba(248, 250, 252, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 10px 22px var(--accent-button-ambient),
+    0 0 12px var(--accent-primary-shadow);
+}
+
+app-root.dark-mode .primary-button:not(:disabled):hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 14px 28px var(--accent-primary-shadow-hover),
+    0 0 16px var(--accent-button-ambient);
+}
+
+app-root .primary-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(255, 255, 255, 0.18),
+      transparent 62%
+    ),
+    rgba(255, 255, 255, 0.06);
+  border-radius: inherit;
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+app-root .primary-button:not(:disabled):active {
+  transform: translateY(-1px) scale(0.997);
+}
+
+app-root .primary-button:not(:disabled):active::after {
+  opacity: 1;
 }
 
 app-root .field-hint {
@@ -190,7 +839,7 @@ app-root .toast {
 }
 
 app-root.dark-mode .toast {
-  background: #e6fff7;
+  background: var(--accent-toast-bg);
   color: #111827;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
 }
@@ -227,6 +876,10 @@ app-root .adjustment-row {
   overflow: hidden;
   position: relative;
   transform-origin: center top;
+}
+
+app-root .break-row.dynamic-card-enter,
+app-root .adjustment-row.dynamic-card-enter {
   will-change: max-height, opacity, transform, padding, filter;
   animation: dynamicCardEnter 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -247,8 +900,8 @@ app-root .adjustment-row.dynamic-card-sweep::after {
     115deg,
     transparent 0%,
     rgba(15, 23, 42, 0.05) 30%,
-    rgba(79, 70, 229, 0.22) 44%,
-    rgba(14, 165, 233, 0.2) 54%,
+    var(--accent-sweep-primary) 44%,
+    var(--accent-sweep-secondary) 54%,
     rgba(15, 23, 42, 0.04) 66%,
     transparent 78%
   );
@@ -300,13 +953,11 @@ app-root.dark-mode .card {
 }
 
 .highlight-card {
-  background: linear-gradient(
-    145deg,
-    rgba(79, 70, 229, 0.92),
-    rgba(34, 211, 238, 0.92)
-  );
+  background: var(--accent-highlight-background);
+  border: var(--accent-highlight-border);
+  box-shadow: var(--accent-highlight-shadow);
   color: #f8fafc;
-  text-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
+  text-shadow: var(--accent-highlight-text-shadow);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -428,25 +1079,16 @@ app-root.dark-mode .card {
 }
 
 app-root.dark-mode .highlight-card {
-  background:
-    radial-gradient(
-      circle at 12% 0%,
-      rgba(45, 212, 191, 0.24),
-      transparent 36%
-    ),
-    linear-gradient(145deg, #23272f 0%, #171a20 58%, #102f2b 100%);
+  background: var(--accent-highlight-background);
   background-clip: padding-box;
-  border: 1px solid rgba(125, 249, 232, 0.32);
-  box-shadow:
-    0 0 0 1px rgba(94, 234, 212, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 18px 42px rgba(0, 0, 0, 0.28);
-  text-shadow: none;
+  border: var(--accent-highlight-border);
+  box-shadow: var(--accent-highlight-shadow);
+  text-shadow: var(--accent-highlight-text-shadow);
 }
 
 app-root.dark-mode .summary-item {
   background: rgba(6, 12, 18, 0.58);
-  border: 1px solid rgba(94, 234, 212, 0.14);
+  border: var(--accent-summary-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 16px 30px rgba(0, 0, 0, 0.14);
@@ -645,7 +1287,7 @@ app-root.dark-mode .message-card {
     padding-right: 4.6rem;
   }
 
-  app-root .adjustment-row {
+app-root .adjustment-row {
     padding: 1.25rem 1.05rem 1.3rem;
   }
 }
@@ -669,7 +1311,7 @@ app-root.dark-mode .message-card {
     padding-top: 0;
     padding-bottom: 0;
     transform: translateY(-18px) scaleX(0.98) scaleY(0.72);
-    box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+    box-shadow: 0 0 0 transparent;
     filter: blur(7px) saturate(0.85);
   }
 
@@ -679,14 +1321,14 @@ app-root.dark-mode .message-card {
     padding-top: var(--dynamic-card-padding-y);
     padding-bottom: var(--dynamic-card-padding-y);
     transform: translateY(4px) scaleX(1.012) scaleY(1.035);
-    box-shadow: 0 18px 34px rgba(14, 165, 233, 0.16);
+    box-shadow: 0 18px 34px var(--accent-dynamic-shadow);
     filter: blur(0) saturate(1.1);
   }
 
   72% {
     opacity: 1;
     transform: translateY(-1px) scaleX(0.998) scaleY(0.992);
-    box-shadow: 0 10px 22px rgba(14, 165, 233, 0.1);
+    box-shadow: 0 10px 22px var(--accent-dynamic-shadow-soft);
     filter: saturate(1.08);
   }
 
@@ -696,7 +1338,7 @@ app-root.dark-mode .message-card {
     padding-top: var(--dynamic-card-padding-y);
     padding-bottom: var(--dynamic-card-padding-y);
     transform: translateY(0) scaleX(1) scaleY(1);
-    box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+    box-shadow: 0 0 0 transparent;
     filter: saturate(1);
   }
 }
@@ -855,6 +1497,7 @@ app-root.dark-mode .message-card {
   app-root .form.form-switching-out,
   app-root .break-row,
   app-root .adjustment-row,
+  app-root .primary-button,
   .result-block,
   .result-reveal .highlight-card,
   .result-reveal .summary-item,
@@ -1033,7 +1676,7 @@ app-root.dark-mode .message-card {
   width: 9px;
   height: 9px;
   box-shadow: 0 0 18px rgba(255, 255, 255, 0.9);
-  filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.35));
+  filter: var(--accent-sparkle-filter);
 }
 
 .comet {
@@ -1057,7 +1700,7 @@ app-root.dark-mode .message-card {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.75),
-    rgba(79, 70, 229, 0)
+    var(--accent-comet-tail)
   );
   border-radius: 999px;
   opacity: 0.9;
@@ -1146,7 +1789,7 @@ app-root.dark-mode .message-card {
   }
 
   50% {
-    filter: drop-shadow(0 0 24px rgba(79, 70, 229, 0.65));
+    filter: drop-shadow(0 0 24px var(--accent-firework-glow));
   }
 
   100% {

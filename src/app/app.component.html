@@ -97,6 +97,7 @@
             "
             [formGroupName]="i"
             [class.dynamic-card-leaving]="isBreakRemoving(breakGroup)"
+            [class.dynamic-card-enter]="isBreakHighlighted(breakGroup)"
             [class.dynamic-card-sweep]="isBreakHighlighted(breakGroup)"
           >
             <div class="form-row inline">
@@ -171,6 +172,7 @@
           *ngIf="isAdjustmentVisible('overtimePickup')"
           formGroupName="overtimePickup"
           [class.dynamic-card-leaving]="isAdjustmentRemoving('overtimePickup')"
+          [class.dynamic-card-enter]="isAdjustmentHighlighted('overtimePickup')"
           [class.dynamic-card-sweep]="isAdjustmentHighlighted('overtimePickup')"
         >
           <div class="adjustment-title">Odbiór nadgodzin</div>
@@ -231,6 +233,7 @@
           *ngIf="isAdjustmentVisible('undertimeMakeup')"
           formGroupName="undertimeMakeup"
           [class.dynamic-card-leaving]="isAdjustmentRemoving('undertimeMakeup')"
+          [class.dynamic-card-enter]="isAdjustmentHighlighted('undertimeMakeup')"
           [class.dynamic-card-sweep]="isAdjustmentHighlighted('undertimeMakeup')"
         >
           <div class="adjustment-title">Odrobienie niedoczasu</div>
@@ -293,7 +296,7 @@
         (click)="calculate()"
         [disabled]="!canCalculate || isSwitchingToResult()"
       >
-        Przelicz
+        <span>Przelicz</span>
       </button>
 
       <div class="schedule-error" *ngIf="scheduleError() as error">
@@ -436,6 +439,33 @@
               (click)="setDarkMode(true)"
             >
               Ciemny
+            </button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <span class="config-label">Kolor przewodni</span>
+          <div
+            class="accent-picker"
+            role="radiogroup"
+            aria-label="Kolor przewodni aplikacji"
+          >
+            <button
+              type="button"
+              class="accent-swatch"
+              *ngFor="
+                let option of accentOptions;
+                trackBy: trackByAccentOption
+              "
+              [ngClass]="'accent-swatch-' + option.value"
+              [class.active]="isAccentSelected(option.value)"
+              [attr.aria-label]="'Ustaw kolor przewodni: ' + option.label"
+              [attr.aria-checked]="isAccentSelected(option.value)"
+              [attr.title]="option.label"
+              role="radio"
+              (click)="setAccentColor(option.value)"
+            >
+              <span class="visually-hidden">{{ option.label }}</span>
             </button>
           </div>
         </div>

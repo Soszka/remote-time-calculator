@@ -23,6 +23,7 @@ interface DurationFormGroup extends FormGroup<{
 type ResultState = 'beforeStart' | 'inProgress' | 'complete';
 type AdjustmentKind = 'overtimePickup' | 'undertimeMakeup';
 type ThemeMode = 'light' | 'dark';
+type AccentColor = 'violet' | 'green' | 'red' | 'yellow';
 
 interface ResultPayload {
   endTime: string;
@@ -37,6 +38,7 @@ interface ResultPayload {
 interface AppSettings {
   theme: ThemeMode;
   favoriteHour: number | null;
+  accentByTheme: Record<ThemeMode, AccentColor>;
 }
 
 interface BreakSnapshot {
@@ -78,7 +80,18 @@ export class AppComponent implements OnDestroy {
   private readonly defaultSettings: AppSettings = {
     theme: 'light',
     favoriteHour: null,
+    accentByTheme: {
+      light: 'violet',
+      dark: 'green',
+    },
   };
+
+  readonly accentOptions: { value: AccentColor; label: string }[] = [
+    { value: 'violet', label: 'Niebiesko-fioletowy' },
+    { value: 'green', label: 'Zielony' },
+    { value: 'red', label: 'Czerwony' },
+    { value: 'yellow', label: 'Żółty' },
+  ];
 
   readonly confettiPieces: { left: number; delay: number; duration: number }[] =
     [
@@ -392,6 +405,7 @@ export class AppComponent implements OnDestroy {
 
   readonly configForm = this.fb.group({
     darkMode: this.fb.control(false, { nonNullable: true }),
+    accentColor: this.fb.control<AccentColor>('violet', { nonNullable: true }),
     favoriteHour: this.fb.control<number | null>(
       null,
       this.favoriteHourValidatorFn,
@@ -442,6 +456,7 @@ export class AppComponent implements OnDestroy {
     this.configForm.patchValue(
       {
         darkMode: settings.theme === 'dark',
+        accentColor: this.getActiveAccent(settings),
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -468,6 +483,9 @@ export class AppComponent implements OnDestroy {
     this.configForm.controls.darkMode.valueChanges.subscribe(() =>
       this.syncThemeFromConfig(),
     );
+    this.configForm.controls.accentColor.valueChanges.subscribe((accentColor) =>
+      this.syncAccentFromConfig(accentColor),
+    );
 
     if (savedDailyPlan) {
       this.calculate(false);
@@ -477,6 +495,26 @@ export class AppComponent implements OnDestroy {
   @HostBinding('class.dark-mode')
   get darkModeClass(): boolean {
     return this.settings().theme === 'dark';
+  }
+
+  @HostBinding('class.accent-violet')
+  get accentVioletClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'violet';
+  }
+
+  @HostBinding('class.accent-green')
+  get accentGreenClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'green';
+  }
+
+  @HostBinding('class.accent-red')
+  get accentRedClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'red';
+  }
+
+  @HostBinding('class.accent-yellow')
+  get accentYellowClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'yellow';
   }
 
   ngOnDestroy(): void {
@@ -504,6 +542,7 @@ export class AppComponent implements OnDestroy {
     this.configForm.patchValue(
       {
         darkMode: settings.theme === 'dark',
+        accentColor: this.getActiveAccent(settings),
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -518,6 +557,14 @@ export class AppComponent implements OnDestroy {
 
   setDarkMode(enabled: boolean): void {
     this.configForm.controls.darkMode.setValue(enabled);
+  }
+
+  setAccentColor(accentColor: AccentColor): void {
+    this.configForm.controls.accentColor.setValue(accentColor);
+  }
+
+  isAccentSelected(accentColor: AccentColor): boolean {
+    return this.getActiveAccent(this.settings()) === accentColor;
   }
 
   saveFavoriteHour(): void {
@@ -771,6 +818,13 @@ export class AppComponent implements OnDestroy {
 
   trackByBreakControl(_index: number, group: BreakFormGroup): BreakFormGroup {
     return group;
+  }
+
+  trackByAccentOption(
+    _index: number,
+    option: { value: AccentColor; label: string },
+  ): AccentColor {
+    return option.value;
   }
 
   hasIncompleteBreak(group: BreakFormGroup): boolean {
@@ -1129,6 +1183,9 @@ export class AppComponent implements OnDestroy {
       return {
         theme: parsedSettings.theme === 'dark' ? 'dark' : 'light',
         favoriteHour: this.normalizeFavoriteHour(parsedSettings.favoriteHour),
+        accentByTheme: this.normalizeAccentByTheme(
+          parsedSettings.accentByTheme,
+        ),
       };
     } catch {
       return this.defaultSettings;
@@ -1149,9 +1206,28 @@ export class AppComponent implements OnDestroy {
   }
 
   private syncThemeFromConfig(): void {
+    const theme = this.configForm.controls.darkMode.value ? 'dark' : 'light';
     const nextSettings: AppSettings = {
       ...this.settings(),
-      theme: this.configForm.controls.darkMode.value ? 'dark' : 'light',
+      theme,
+    };
+
+    this.settings.set(nextSettings);
+    this.configForm.controls.accentColor.setValue(
+      this.getActiveAccent(nextSettings),
+      { emitEvent: false },
+    );
+    this.saveSettings(nextSettings);
+  }
+
+  private syncAccentFromConfig(accentColor: AccentColor): void {
+    const currentSettings = this.settings();
+    const nextSettings: AppSettings = {
+      ...currentSettings,
+      accentByTheme: {
+        ...currentSettings.accentByTheme,
+        [currentSettings.theme]: accentColor,
+      },
     };
 
     this.settings.set(nextSettings);
@@ -1259,6 +1335,38 @@ export class AppComponent implements OnDestroy {
     }
 
     return numericValue;
+  }
+
+  private normalizeAccentByTheme(
+    value: unknown,
+  ): Record<ThemeMode, AccentColor> {
+    const fallback = this.defaultSettings.accentByTheme;
+    if (!this.isRecord(value)) {
+      return { ...fallback };
+    }
+
+    return {
+      light: this.normalizeAccentColor(value['light'], fallback.light),
+      dark: this.normalizeAccentColor(value['dark'], fallback.dark),
+    };
+  }
+
+  private normalizeAccentColor(
+    value: unknown,
+    fallback: AccentColor,
+  ): AccentColor {
+    return (
+      value === 'violet' ||
+      value === 'green' ||
+      value === 'red' ||
+      value === 'yellow'
+    )
+      ? value
+      : fallback;
+  }
+
+  private getActiveAccent(settings: AppSettings): AccentColor {
+    return settings.accentByTheme[settings.theme];
   }
 
   private getFavoriteStartPrefix(favoriteHour: number | null): string {

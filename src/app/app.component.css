@@ -91,8 +91,8 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4338ca;
+  background: var(--accent-control-bg);
+  color: var(--accent-text);
   font-size: 1.2rem;
   cursor: pointer;
   transition:
@@ -103,21 +103,21 @@ h1 {
 
 .icon-button:hover {
   transform: translateY(-1px) rotate(18deg);
-  background: rgba(99, 102, 241, 0.18);
+  background: var(--accent-control-bg-hover);
 }
 
 .icon-button:focus-visible {
-  outline: 2px solid rgba(99, 102, 241, 0.45);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 3px;
 }
 
 :host.dark-mode .icon-button {
-  background: rgba(20, 184, 166, 0.16);
-  color: #5eead4;
+  background: var(--accent-control-bg);
+  color: var(--accent-text);
 }
 
 :host.dark-mode .icon-button:hover {
-  background: rgba(20, 184, 166, 0.24);
+  background: var(--accent-control-bg-hover);
 }
 
 .form {
@@ -155,7 +155,7 @@ input {
   padding: 0.9rem 1.1rem;
   font-size: 1rem;
   font-weight: 500;
-  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.08);
+  box-shadow: inset 0 0 0 1px var(--accent-input-inset);
   transition:
     box-shadow 0.2s ease,
     transform 0.2s ease;
@@ -164,21 +164,21 @@ input {
 input:focus {
   outline: none;
   box-shadow:
-    inset 0 0 0 2px #6366f1,
-    0 8px 18px rgba(99, 102, 241, 0.2);
+    inset 0 0 0 2px var(--accent-solid),
+    0 8px 18px var(--accent-input-shadow);
   transform: translateY(-1px);
 }
 
 :host.dark-mode input {
   background: linear-gradient(145deg, #262a33, #20242c);
   color: #f8fafc;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+  box-shadow: inset 0 0 0 1px var(--accent-input-inset);
 }
 
 :host.dark-mode input:focus {
   box-shadow:
-    inset 0 0 0 2px #14b8a6,
-    0 8px 18px rgba(20, 184, 166, 0.18);
+    inset 0 0 0 2px var(--accent-solid),
+    0 8px 18px var(--accent-input-shadow);
 }
 
 input::placeholder {
@@ -202,7 +202,7 @@ input::placeholder {
 .ghost-button {
   border: none;
   background: transparent;
-  color: #6366f1;
+  color: var(--accent-text);
   font-weight: 600;
   padding: 0.38rem 0.85rem;
   border-radius: 12px;
@@ -216,7 +216,7 @@ input::placeholder {
 }
 
 .ghost-button:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: var(--accent-ghost-hover);
   transform: translateY(-1px);
 }
 
@@ -231,16 +231,16 @@ input::placeholder {
 }
 
 .ghost-button:focus-visible {
-  outline: 2px solid rgba(99, 102, 241, 0.4);
+  outline: 2px solid var(--accent-focus-ring-soft);
   outline-offset: 2px;
 }
 
 :host.dark-mode .ghost-button {
-  color: #5eead4;
+  color: var(--accent-text);
 }
 
 :host.dark-mode .ghost-button:hover {
-  background: rgba(20, 184, 166, 0.14);
+  background: var(--accent-ghost-hover);
 }
 
 .breaks-wrapper {
@@ -268,11 +268,11 @@ input::placeholder {
   align-items: start;
   padding: 0.75rem 0.85rem;
   border-radius: 18px;
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--accent-row-bg);
 }
 
 :host.dark-mode .break-row {
-  background: rgba(20, 184, 166, 0.09);
+  background: var(--accent-row-bg);
 }
 
 .break-warning {
@@ -326,11 +326,11 @@ input::placeholder {
   align-items: start;
   padding: 0.75rem 0.85rem;
   border-radius: 18px;
-  background: rgba(14, 165, 233, 0.08);
+  background: var(--accent-alt-row-bg);
 }
 
 :host.dark-mode .adjustment-row {
-  background: rgba(139, 92, 246, 0.13);
+  background: var(--accent-alt-row-bg);
 }
 
 .adjustment-title {
@@ -341,75 +341,6 @@ input::placeholder {
 
 :host.dark-mode .adjustment-title {
   color: #f1f5f9;
-}
-
-.primary-button {
-  border: none;
-  border-radius: 16px;
-  padding: 1rem 1.2rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  background: linear-gradient(135deg, #4f46e5, #22d3ee);
-  color: #fff;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.2;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 14px 30px rgba(79, 70, 229, 0.22);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.primary-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-  box-shadow: none;
-}
-
-.primary-button:not(:disabled):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 34px rgba(79, 70, 229, 0.28);
-}
-
-:host.dark-mode .primary-button {
-  background: linear-gradient(135deg, #0f766e, #22c55e);
-  color: #f8fafc;
-  box-shadow: 0 14px 30px rgba(34, 197, 94, 0.16);
-}
-
-:host.dark-mode .primary-button:not(:disabled):hover {
-  box-shadow: 0 18px 34px rgba(20, 184, 166, 0.22);
-}
-
-.primary-button::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 0;
-  height: 0;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  opacity: 0;
-  transition:
-    width 0.45s ease,
-    height 0.45s ease,
-    opacity 0.45s ease;
-}
-
-.primary-button:active::after {
-  width: 280px;
-  height: 280px;
-  opacity: 0.55;
-  transition: 0s;
 }
 
 .dialog-backdrop {
@@ -481,11 +412,11 @@ input::placeholder {
   gap: 0.25rem;
   padding: 0.25rem;
   border-radius: 14px;
-  background: rgba(99, 102, 241, 0.1);
+  background: var(--accent-segment-bg);
 }
 
 :host.dark-mode .theme-segment {
-  background: rgba(148, 163, 184, 0.14);
+  background: var(--accent-segment-bg);
 }
 
 .theme-segment button {
@@ -504,7 +435,7 @@ input::placeholder {
 
 .theme-segment button.active {
   background: #fff;
-  color: #4338ca;
+  color: var(--accent-text);
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
 }
 
@@ -514,7 +445,7 @@ input::placeholder {
 
 :host.dark-mode .theme-segment button.active {
   background: #242831;
-  color: #5eead4;
+  color: var(--accent-text);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
 }
 
