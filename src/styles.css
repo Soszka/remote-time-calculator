@@ -528,11 +528,15 @@ app-root.dark-mode .icon-button.settings-button::after {
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
 }
 
-app-root .accent-picker {
-  display: flex;
+app-root .accent-picker,
+app-root .favorite-hour-picker {
+  --config-circle-size: 44px;
+  --config-circle-gap: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(4, var(--config-circle-size));
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: var(--config-circle-gap);
+  justify-content: start;
   padding: 0.15rem 0 0.1rem;
 }
 
@@ -540,9 +544,8 @@ app-root .accent-swatch {
   --swatch-gradient: linear-gradient(135deg, #4f46e5, #22d3ee);
   --swatch-shadow: rgba(79, 70, 229, 0.22);
   position: relative;
-  width: 39px;
-  height: 39px;
-  flex: 0 0 39px;
+  width: var(--config-circle-size);
+  height: var(--config-circle-size);
   border: none;
   border-radius: 50%;
   padding: 0;
@@ -646,68 +649,151 @@ app-root .visually-hidden {
   border: 0;
 }
 
-app-root .favorite-save-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-  align-items: stretch;
-}
-
-app-root .save-button {
-  border: none;
-  border-radius: 14px;
-  padding: 0 1rem;
-  background: linear-gradient(
-    135deg,
-    var(--accent-gradient-start),
-    var(--accent-save-gradient-end)
-  );
-  color: #f8fafc;
-  font-weight: 800;
+app-root .favorite-hour-option {
+  position: relative;
+  width: var(--config-circle-size);
+  height: var(--config-circle-size);
+  border: 2px solid rgba(148, 163, 184, 0.42);
+  border-radius: 50%;
+  padding: 0;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  color: #334155;
   cursor: pointer;
-  box-shadow: 0 12px 24px var(--accent-save-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
   transition:
     transform 0.2s ease,
-    filter 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
-app-root .save-button:hover {
-  transform: translateY(-1px);
-  filter: saturate(1.08) brightness(1.03);
-  box-shadow: 0 15px 28px var(--accent-save-shadow-hover);
+app-root .favorite-hour-option.has-tooltip::before,
+app-root .favorite-hour-option.has-tooltip::after {
+  position: absolute;
+  left: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  z-index: 40;
 }
 
-app-root .save-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-  transform: none;
-  filter: none;
-  box-shadow: none;
-}
-
-app-root .save-button:disabled:hover {
-  filter: none;
-  box-shadow: none;
-}
-
-app-root.dark-mode .save-button {
-  background: linear-gradient(
-    135deg,
-    var(--accent-gradient-start),
-    var(--accent-save-gradient-end)
-  );
+app-root .favorite-hour-option.has-tooltip::before {
+  content: attr(data-tooltip);
+  bottom: calc(100% + 0.65rem);
+  padding: 0.42rem 0.58rem;
+  border-radius: 10px;
+  background: #0f172a;
   color: #f8fafc;
-  box-shadow: 0 12px 24px var(--accent-save-shadow);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, 4px);
 }
 
-app-root.dark-mode .save-button:hover {
-  box-shadow: 0 15px 30px var(--accent-save-shadow-hover);
+app-root .favorite-hour-option.has-tooltip::after {
+  content: "";
+  bottom: calc(100% + 0.42rem);
+  width: 9px;
+  height: 9px;
+  background: #0f172a;
+  transform: translate(-50%, 4px) rotate(45deg);
 }
 
-app-root.dark-mode .save-button:disabled:hover {
-  filter: none;
-  box-shadow: none;
+app-root .favorite-hour-option:hover,
+app-root .favorite-hour-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--accent-solid);
+  color: var(--accent-text);
+  box-shadow: 0 10px 20px var(--accent-input-shadow);
+}
+
+app-root .favorite-hour-option.has-tooltip:hover::before,
+app-root .favorite-hour-option.has-tooltip:hover::after,
+app-root .favorite-hour-option.has-tooltip:focus-visible::before,
+app-root .favorite-hour-option.has-tooltip:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+app-root .favorite-hour-option.has-tooltip:hover::after,
+app-root .favorite-hour-option.has-tooltip:focus-visible::after {
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+app-root .favorite-hour-option:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 4px;
+}
+
+app-root .favorite-hour-option.active {
+  border-color: var(--accent-solid);
+  background: var(--accent-control-bg);
+  color: var(--accent-text);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.98),
+    0 0 0 5px var(--accent-focus-ring),
+    0 12px 24px var(--accent-input-shadow);
+}
+
+app-root .favorite-hour-empty-icon {
+  position: relative;
+  width: 1.18rem;
+  height: 1.18rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+app-root .favorite-hour-empty-icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(-42deg);
+}
+
+app-root.dark-mode .favorite-hour-option {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: linear-gradient(145deg, #262a33, #20242c);
+  color: #e2e8f0;
+}
+
+app-root.dark-mode .favorite-hour-option.has-tooltip::before,
+app-root.dark-mode .favorite-hour-option.has-tooltip::after {
+  background: #f8fafc;
+}
+
+app-root.dark-mode .favorite-hour-option.has-tooltip::before {
+  color: #111827;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
+}
+
+app-root.dark-mode .favorite-hour-option:hover,
+app-root.dark-mode .favorite-hour-option:focus-visible,
+app-root.dark-mode .favorite-hour-option.active {
+  border-color: var(--accent-solid);
+  color: var(--accent-text);
+}
+
+app-root.dark-mode .favorite-hour-option.active {
+  background: var(--accent-control-bg);
+  box-shadow:
+    0 0 0 2px #242831,
+    0 0 0 5px var(--accent-focus-ring),
+    0 12px 24px var(--accent-input-shadow);
 }
 
 app-root .primary-button {
@@ -1198,10 +1284,6 @@ app-root.dark-mode .message-card {
 }
 
 @media (max-width: 720px) {
-  app-root .favorite-save-row {
-    grid-template-columns: 1fr;
-  }
-
   app-root .panel {
     gap: 1.45rem;
   }

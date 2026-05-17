@@ -470,47 +470,41 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <label for="favorite-hour">Ulubiona godzina startu</label>
-          <div class="favorite-save-row">
-            <input
-              id="favorite-hour"
-              type="number"
-              min="0"
-              max="23"
-              step="1"
-              inputmode="numeric"
-              placeholder="np. 7"
-              formControlName="favoriteHour"
-              [attr.aria-describedby]="
-                isInvalid(configForm.controls.favoriteHour)
-                  ? 'favorite-hour-feedback'
-                  : 'favorite-hour-hint'
-              "
-            />
+        <div class="config-row">
+          <span id="favorite-hour-label" class="config-label">
+            Ulubiona godzina startu
+          </span>
+          <div
+            class="favorite-hour-picker"
+            role="radiogroup"
+            aria-labelledby="favorite-hour-label"
+          >
             <button
               type="button"
-              class="save-button"
-              (click)="saveFavoriteHour()"
-              [disabled]="configForm.controls.favoriteHour.invalid"
+              class="favorite-hour-option"
+              *ngFor="
+                let option of favoriteHourOptions;
+                trackBy: trackByFavoriteHourOption
+              "
+              [class.active]="isFavoriteHourSelected(option.value)"
+              [class.has-tooltip]="option.value === null"
+              [attr.aria-label]="
+                'Ustaw ulubioną godzinę startu: ' + option.tooltip
+              "
+              [attr.aria-checked]="isFavoriteHourSelected(option.value)"
+              [attr.data-tooltip]="option.value === null ? option.tooltip : null"
+              [attr.title]="option.value === null ? option.tooltip : null"
+              role="radio"
+              (click)="setFavoriteHour(option.value)"
             >
-              Zapisz
+              <span
+                *ngIf="option.value === null"
+                class="favorite-hour-empty-icon"
+                aria-hidden="true"
+              ></span>
+              <span *ngIf="option.value !== null">{{ option.label }}</span>
             </button>
           </div>
-          <span
-            id="favorite-hour-feedback"
-            class="error"
-            *ngIf="isInvalid(configForm.controls.favoriteHour)"
-          >
-            Wpisz tylko pełną godzinę od 0 do 23, np. 7. Bez minut i dwukropka.
-          </span>
-          <span
-            id="favorite-hour-hint"
-            class="field-hint"
-            *ngIf="!isInvalid(configForm.controls.favoriteHour)"
-          >
-            Podaj samą godzinę, np. 7. Minuty dopiszesz później w polu startu pracy.
-          </span>
         </div>
       </form>
     </section>

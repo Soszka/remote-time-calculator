@@ -65,6 +65,106 @@ describe('AppComponent', () => {
     );
   });
 
+  it('stores separate accent colors for light and dark themes', () => {
+    const app = createApp();
+
+    app.setAccentColor('red');
+    expect(app.accentRedClass).toBeTrue();
+
+    app.setDarkMode(true);
+    expect(app.darkModeClass).toBeTrue();
+    expect(app.accentGreenClass).toBeTrue();
+
+    app.setAccentColor('yellow');
+    expect(app.accentYellowClass).toBeTrue();
+
+    app.setDarkMode(false);
+    expect(app.darkModeClass).toBeFalse();
+    expect(app.accentRedClass).toBeTrue();
+
+    const savedSettings = JSON.parse(
+      localStorage.getItem('workEndCalculator.settings') ?? '{}'
+    );
+    expect(savedSettings.accentByTheme).toEqual({
+      light: 'red',
+      dark: 'yellow',
+    });
+  });
+
+  it('restores saved accent colors from settings storage', () => {
+    localStorage.setItem(
+      'workEndCalculator.settings',
+      JSON.stringify({
+        theme: 'dark',
+        favoriteHour: null,
+        accentByTheme: {
+          light: 'yellow',
+          dark: 'red',
+        },
+      })
+    );
+
+    const app = createApp();
+
+    expect(app.darkModeClass).toBeTrue();
+    expect(app.accentRedClass).toBeTrue();
+
+    app.setDarkMode(false);
+
+    expect(app.darkModeClass).toBeFalse();
+    expect(app.accentYellowClass).toBeTrue();
+  });
+
+  it('saves favorite start hour immediately when an option is selected', () => {
+    const app = createApp();
+
+    app.setFavoriteHour(7);
+
+    expect(app.settings().favoriteHour).toBe(7);
+    expect(app.configForm.controls.favoriteHour.value).toBe(7);
+
+    let savedSettings = JSON.parse(
+      localStorage.getItem('workEndCalculator.settings') ?? '{}'
+    );
+    expect(savedSettings.favoriteHour).toBe(7);
+
+    app.setFavoriteHour(null);
+
+    expect(app.settings().favoriteHour).toBeNull();
+    savedSettings = JSON.parse(
+      localStorage.getItem('workEndCalculator.settings') ?? '{}'
+    );
+    expect(savedSettings.favoriteHour).toBeNull();
+  });
+
+  it('shows tooltip only for the no favorite hour option', () => {
+    fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    compiled
+      .querySelector<HTMLButtonElement>('.settings-button')
+      ?.click();
+    fixture.detectChanges();
+
+    const favoriteOptions = Array.from(
+      compiled.querySelectorAll<HTMLButtonElement>('.favorite-hour-option')
+    );
+
+    expect(favoriteOptions.length).toBe(4);
+    expect(favoriteOptions[0].getAttribute('title')).toBe('Brak');
+    expect(favoriteOptions[0].getAttribute('data-tooltip')).toBe('Brak');
+    expect(
+      favoriteOptions[0].querySelector('.favorite-hour-empty-icon')
+    ).not.toBeNull();
+    expect(favoriteOptions[0].textContent?.trim()).toBe('');
+
+    for (const hourOption of favoriteOptions.slice(1)) {
+      expect(hourOption.hasAttribute('title')).toBeFalse();
+      expect(hourOption.hasAttribute('data-tooltip')).toBeFalse();
+    }
+  });
+
   it('calculates 8h 15min of work with no breaks or adjustments', () => {
     const app = createApp();
     app.form.controls.startTime.setValue('08:00');
@@ -155,6 +255,20 @@ describe('AppComponent', () => {
     expect(app.scheduleError()).toBeNull();
     expect(app.result()?.endTime).toBe('15:45');
     expect(app.result()?.breaksLabel).toBe('Przerwy: 15min');
+  });
+
+  it('combines breaks and undertime makeup correctly', () => {
+    const app = createApp();
+    app.form.controls.startTime.setValue('06:00');
+    addBreak(app, '10:00', '10:20');
+    setUndertimeMakeup(app, 0, 40);
+
+    calculate(app);
+
+    expect(app.scheduleError()).toBeNull();
+    expect(app.result()?.endTime).toBe('15:15');
+    expect(app.result()?.breaksLabel).toBe('Przerwy: 20min');
+    expect(app.result()?.adjustmentLabel).toBe('Odrobienie niedoczasu: 40min');
   });
 
   it('blocks calculation when a break has only one time filled', () => {

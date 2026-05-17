@@ -24,6 +24,7 @@ type ResultState = 'beforeStart' | 'inProgress' | 'complete';
 type AdjustmentKind = 'overtimePickup' | 'undertimeMakeup';
 type ThemeMode = 'light' | 'dark';
 type AccentColor = 'violet' | 'green' | 'red' | 'yellow';
+type FavoriteHour = 6 | 7 | 8 | null;
 
 interface ResultPayload {
   endTime: string;
@@ -37,7 +38,7 @@ interface ResultPayload {
 
 interface AppSettings {
   theme: ThemeMode;
-  favoriteHour: number | null;
+  favoriteHour: FavoriteHour;
   accentByTheme: Record<ThemeMode, AccentColor>;
 }
 
@@ -91,6 +92,16 @@ export class AppComponent implements OnDestroy {
     { value: 'green', label: 'Zielony' },
     { value: 'red', label: 'Czerwony' },
     { value: 'yellow', label: 'Żółty' },
+  ];
+  readonly favoriteHourOptions: {
+    value: FavoriteHour;
+    label: string;
+    tooltip: string;
+  }[] = [
+    { value: null, label: 'Brak', tooltip: 'Brak' },
+    { value: 6, label: '6', tooltip: '6:00' },
+    { value: 7, label: '7', tooltip: '7:00' },
+    { value: 8, label: '8', tooltip: '8:00' },
   ];
 
   readonly confettiPieces: { left: number; delay: number; duration: number }[] =
@@ -406,7 +417,7 @@ export class AppComponent implements OnDestroy {
   readonly configForm = this.fb.group({
     darkMode: this.fb.control(false, { nonNullable: true }),
     accentColor: this.fb.control<AccentColor>('violet', { nonNullable: true }),
-    favoriteHour: this.fb.control<number | null>(
+    favoriteHour: this.fb.control<FavoriteHour>(
       null,
       this.favoriteHourValidatorFn,
     ),
@@ -567,16 +578,17 @@ export class AppComponent implements OnDestroy {
     return this.getActiveAccent(this.settings()) === accentColor;
   }
 
-  saveFavoriteHour(): void {
+  setFavoriteHour(favoriteHour: FavoriteHour): void {
     const favoriteHourControl = this.configForm.controls.favoriteHour;
-    if (favoriteHourControl.invalid) {
-      favoriteHourControl.markAsTouched();
+    if (this.settings().favoriteHour === favoriteHour) {
       return;
     }
 
+    favoriteHourControl.setValue(favoriteHour, { emitEvent: false });
+
     const nextSettings: AppSettings = {
       ...this.settings(),
-      favoriteHour: this.normalizeFavoriteHour(favoriteHourControl.value),
+      favoriteHour,
     };
 
     this.settings.set(nextSettings);
@@ -586,6 +598,10 @@ export class AppComponent implements OnDestroy {
         ? 'Ulubiona godzina startu została wyczyszczona.'
         : 'Nowa ulubiona godzina startu została zapisana.',
     );
+  }
+
+  isFavoriteHourSelected(favoriteHour: FavoriteHour): boolean {
+    return this.settings().favoriteHour === favoriteHour;
   }
 
   addBreak(): void {
@@ -825,6 +841,13 @@ export class AppComponent implements OnDestroy {
     option: { value: AccentColor; label: string },
   ): AccentColor {
     return option.value;
+  }
+
+  trackByFavoriteHourOption(
+    _index: number,
+    option: { value: FavoriteHour; label: string; tooltip: string },
+  ): string {
+    return option.value === null ? 'none' : String(option.value);
   }
 
   hasIncompleteBreak(group: BreakFormGroup): boolean {
@@ -1319,22 +1342,15 @@ export class AppComponent implements OnDestroy {
     }
   }
 
-  private normalizeFavoriteHour(value: unknown): number | null {
+  private normalizeFavoriteHour(value: unknown): FavoriteHour {
     if (value === null || value === undefined || value === '') {
       return null;
     }
 
     const numericValue = Number(value);
-    if (
-      !Number.isFinite(numericValue) ||
-      !Number.isInteger(numericValue) ||
-      numericValue < 0 ||
-      numericValue > 23
-    ) {
-      return null;
-    }
-
-    return numericValue;
+    return numericValue === 6 || numericValue === 7 || numericValue === 8
+      ? numericValue
+      : null;
   }
 
   private normalizeAccentByTheme(
@@ -1369,7 +1385,7 @@ export class AppComponent implements OnDestroy {
     return settings.accentByTheme[settings.theme];
   }
 
-  private getFavoriteStartPrefix(favoriteHour: number | null): string {
+  private getFavoriteStartPrefix(favoriteHour: FavoriteHour): string {
     return favoriteHour === null ? '' : `${favoriteHour}:`;
   }
 
