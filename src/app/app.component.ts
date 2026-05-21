@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostBinding, OnDestroy, signal } from '@angular/core';
+import { Component, HostBinding, OnDestroy, effect, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -10,6 +10,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { Title } from '@angular/platform-browser';
 interface BreakFormGroup extends FormGroup<{
   start: FormControl<string | null>;
   end: FormControl<string | null>;
@@ -25,10 +26,12 @@ type AdjustmentKind = 'overtimePickup' | 'undertimeMakeup';
 type ThemeMode = 'light' | 'dark';
 type AccentColor = 'violet' | 'green' | 'red' | 'yellow';
 type FavoriteHour = 6 | 7 | 8 | null;
+type TabDisplayMode = 'endTime' | 'remainingTime';
 
 interface ResultPayload {
   endTime: string;
   remainingLabel: string;
+  remainingTitleLabel: string;
   message: string;
   state: ResultState;
   startTime: string;
@@ -39,6 +42,7 @@ interface ResultPayload {
 interface AppSettings {
   theme: ThemeMode;
   favoriteHour: FavoriteHour;
+  tabDisplayMode: TabDisplayMode;
   accentByTheme: Record<ThemeMode, AccentColor>;
 }
 
@@ -76,11 +80,13 @@ export class AppComponent implements OnDestroy {
   private readonly settingsStorageKey = 'workEndCalculator.settings';
   private readonly startTimeStorageKey = 'workEndCalculator.startTime';
   private readonly dailyPlanStorageKey = 'workEndCalculator.dailyPlan';
+  private readonly defaultDocumentTitle = 'Kalkulator końca pracy';
   private readonly dynamicCardExitMs = 320;
   private readonly dynamicCardHighlightMs = 860;
   private readonly defaultSettings: AppSettings = {
     theme: 'light',
     favoriteHour: null,
+    tabDisplayMode: 'endTime',
     accentByTheme: {
       light: 'violet',
       dark: 'green',
@@ -102,6 +108,10 @@ export class AppComponent implements OnDestroy {
     { value: 6, label: '6', tooltip: '6:00' },
     { value: 7, label: '7', tooltip: '7:00' },
     { value: 8, label: '8', tooltip: '8:00' },
+  ];
+  readonly tabDisplayOptions: { value: TabDisplayMode; label: string }[] = [
+    { value: 'endTime', label: 'Godzina wyjścia' },
+    { value: 'remainingTime', label: 'Czas do końca' },
   ];
 
   readonly confettiPieces: { left: number; delay: number; duration: number }[] =
@@ -417,6 +427,9 @@ export class AppComponent implements OnDestroy {
   readonly configForm = this.fb.group({
     darkMode: this.fb.control(false, { nonNullable: true }),
     accentColor: this.fb.control<AccentColor>('violet', { nonNullable: true }),
+    tabDisplayMode: this.fb.control<TabDisplayMode>('endTime', {
+      nonNullable: true,
+    }),
     favoriteHour: this.fb.control<FavoriteHour>(
       null,
       this.favoriteHourValidatorFn,
@@ -461,13 +474,17 @@ export class AppComponent implements OnDestroy {
     endLabel: string;
   } | null = null;
 
-  constructor(private readonly fb: FormBuilder) {
+  constructor(
+    private readonly fb: FormBuilder,
+    private readonly title: Title,
+  ) {
     const settings = this.loadSettings();
     this.settings.set(settings);
     this.configForm.patchValue(
       {
         darkMode: settings.theme === 'dark',
         accentColor: this.getActiveAccent(settings),
+        tabDisplayMode: settings.tabDisplayMode,
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -497,6 +514,13 @@ export class AppComponent implements OnDestroy {
     this.configForm.controls.accentColor.valueChanges.subscribe((accentColor) =>
       this.syncAccentFromConfig(accentColor),
     );
+    this.configForm.controls.tabDisplayMode.valueChanges.subscribe(
+      (tabDisplayMode) => this.syncTabDisplayModeFromConfig(tabDisplayMode),
+    );
+
+    effect(() => {
+      this.syncDocumentTitle(this.result(), this.settings().tabDisplayMode);
+    });
 
     if (savedDailyPlan) {
       this.calculate(false);
@@ -554,6 +578,7 @@ export class AppComponent implements OnDestroy {
       {
         darkMode: settings.theme === 'dark',
         accentColor: this.getActiveAccent(settings),
+        tabDisplayMode: settings.tabDisplayMode,
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -602,6 +627,14 @@ export class AppComponent implements OnDestroy {
 
   isFavoriteHourSelected(favoriteHour: FavoriteHour): boolean {
     return this.settings().favoriteHour === favoriteHour;
+  }
+
+  setTabDisplayMode(tabDisplayMode: TabDisplayMode): void {
+    this.configForm.controls.tabDisplayMode.setValue(tabDisplayMode);
+  }
+
+  isTabDisplayModeSelected(tabDisplayMode: TabDisplayMode): boolean {
+    return this.settings().tabDisplayMode === tabDisplayMode;
   }
 
   addBreak(): void {
@@ -791,6 +824,7 @@ export class AppComponent implements OnDestroy {
     const nextResult: ResultPayload = {
       endTime: endTimeLabel,
       remainingLabel,
+      remainingTitleLabel: remainingForMessage,
       message,
       state,
       startTime: startLabel,
@@ -848,6 +882,13 @@ export class AppComponent implements OnDestroy {
     option: { value: FavoriteHour; label: string; tooltip: string },
   ): string {
     return option.value === null ? 'none' : String(option.value);
+  }
+
+  trackByTabDisplayOption(
+    _index: number,
+    option: { value: TabDisplayMode; label: string },
+  ): TabDisplayMode {
+    return option.value;
   }
 
   hasIncompleteBreak(group: BreakFormGroup): boolean {
@@ -1206,6 +1247,9 @@ export class AppComponent implements OnDestroy {
       return {
         theme: parsedSettings.theme === 'dark' ? 'dark' : 'light',
         favoriteHour: this.normalizeFavoriteHour(parsedSettings.favoriteHour),
+        tabDisplayMode: this.normalizeTabDisplayMode(
+          parsedSettings.tabDisplayMode,
+        ),
         accentByTheme: this.normalizeAccentByTheme(
           parsedSettings.accentByTheme,
         ),
@@ -1255,6 +1299,40 @@ export class AppComponent implements OnDestroy {
 
     this.settings.set(nextSettings);
     this.saveSettings(nextSettings);
+  }
+
+  private syncTabDisplayModeFromConfig(
+    tabDisplayMode: TabDisplayMode,
+  ): void {
+    const nextSettings: AppSettings = {
+      ...this.settings(),
+      tabDisplayMode,
+    };
+
+    this.settings.set(nextSettings);
+    this.saveSettings(nextSettings);
+  }
+
+  private syncDocumentTitle(
+    payload: ResultPayload | null,
+    tabDisplayMode: TabDisplayMode,
+  ): void {
+    this.title.setTitle(this.createDocumentTitle(payload, tabDisplayMode));
+  }
+
+  private createDocumentTitle(
+    payload: ResultPayload | null,
+    tabDisplayMode: TabDisplayMode,
+  ): string {
+    if (!payload) {
+      return this.defaultDocumentTitle;
+    }
+
+    if (tabDisplayMode === 'remainingTime') {
+      return `Do końca ${payload.remainingTitleLabel}`;
+    }
+
+    return `Wyjście o ${payload.endTime}`;
   }
 
   private showToast(message: string): void {
@@ -1351,6 +1429,10 @@ export class AppComponent implements OnDestroy {
     return numericValue === 6 || numericValue === 7 || numericValue === 8
       ? numericValue
       : null;
+  }
+
+  private normalizeTabDisplayMode(value: unknown): TabDisplayMode {
+    return value === 'remainingTime' ? 'remainingTime' : 'endTime';
   }
 
   private normalizeAccentByTheme(
@@ -1481,6 +1563,7 @@ export class AppComponent implements OnDestroy {
           ...current,
           state: nextState,
           remainingLabel: this.formatRemainingLabel(diffSeconds),
+          remainingTitleLabel: this.formatRemainingMessage(diffSeconds),
           message: nextMessage,
         };
       });

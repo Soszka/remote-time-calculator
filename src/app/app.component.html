@@ -444,6 +444,31 @@
         </div>
 
         <div class="config-row">
+          <span id="tab-display-label" class="config-label">
+            Informacja w karcie przeglądarki
+          </span>
+          <div
+            class="title-segment"
+            role="radiogroup"
+            aria-labelledby="tab-display-label"
+          >
+            <button
+              type="button"
+              *ngFor="
+                let option of tabDisplayOptions;
+                trackBy: trackByTabDisplayOption
+              "
+              [class.active]="isTabDisplayModeSelected(option.value)"
+              [attr.aria-checked]="isTabDisplayModeSelected(option.value)"
+              role="radio"
+              (click)="setTabDisplayMode(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <div class="config-row">
           <span class="config-label">Kolor przewodni</span>
           <div
             class="accent-picker"
