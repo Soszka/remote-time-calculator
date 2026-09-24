@@ -173,8 +173,79 @@ describe('AppComponent', () => {
 
     expect(app.scheduleError()).toBeNull();
     expect(app.result()?.endTime).toBe('16:15');
+    expect(app.result()?.earlyEndTime).toBe('16:00');
+    expect(app.result()?.lateEndTime).toBe('16:30');
     expect(app.result()?.breaksLabel).toBeNull();
     expect(app.result()?.adjustmentLabel).toBeNull();
+  });
+
+  it('saves separate display modes for the exit and remaining cards', () => {
+    const app = createApp();
+
+    expect(app.settings().endTimeDisplayMode).toBe('timeline');
+    expect(app.settings().remainingTimeDisplayMode).toBe('timeline');
+
+    app.setCardDisplayMode('endTimeDisplayMode', 'standard');
+    expect(app.settings().endTimeDisplayMode).toBe('standard');
+    expect(app.settings().remainingTimeDisplayMode).toBe('timeline');
+
+    app.setCardDisplayMode('remainingTimeDisplayMode', 'standard');
+    const savedSettings = JSON.parse(localStorage.getItem('workEndCalculator.settings') ?? '{}');
+    expect(savedSettings.endTimeDisplayMode).toBe('standard');
+    expect(savedSettings.remainingTimeDisplayMode).toBe('standard');
+  });
+
+  it('shows halfway progress and counts down to all three exit thresholds', () => {
+    jasmine.clock().install();
+    try {
+      jasmine.clock().mockDate(new Date(2026, 8, 24, 12, 7, 30));
+      const app = createApp();
+      app.form.controls.startTime.setValue('08:00');
+      calculate(app);
+
+      expect(app.result()?.progressPercent).toBe(50);
+      expect(app.result()?.remainingClockLabel).toBe('04:07:30');
+      expect(app.result()?.earlyRemainingLabel).toBe('3h 53min');
+      expect(app.result()?.lateRemainingLabel).toBe('4h 23min');
+      expect(app.result()?.reachedEarly).toBeFalse();
+
+      jasmine.clock().mockDate(new Date(2026, 8, 24, 15, 59, 59));
+      jasmine.clock().tick(1000);
+      expect(app.result()?.reachedEarly).toBeTrue();
+      expect(app.result()?.reachedStandard).toBeFalse();
+
+      jasmine.clock().mockDate(new Date(2026, 8, 24, 16, 14, 59));
+      jasmine.clock().tick(1000);
+      expect(app.result()?.reachedStandard).toBeTrue();
+      expect(app.result()?.reachedLate).toBeFalse();
+
+      jasmine.clock().mockDate(new Date(2026, 8, 24, 16, 29, 59));
+      jasmine.clock().tick(1000);
+      expect(app.result()?.reachedLate).toBeTrue();
+      expect(app.result()?.progressPercent).toBe(100);
+    } finally {
+      jasmine.clock().uninstall();
+    }
+  });
+
+  it('does not restart yesterday\'s countdown after the browser resumes on a new day', () => {
+    jasmine.clock().install();
+    try {
+      jasmine.clock().mockDate(new Date(2026, 8, 24, 7, 0, 0));
+      const app = createApp();
+      app.form.controls.startTime.setValue('08:00');
+      calculate(app);
+
+      jasmine.clock().mockDate(new Date(2026, 8, 25, 7, 0, 0));
+      jasmine.clock().tick(1000);
+
+      expect(app.result()?.state).toBe('complete');
+      expect(app.result()?.remainingClockLabel).toBe('00:00:00');
+      expect(app.result()?.progressPercent).toBe(100);
+      expect(app.result()?.reachedLate).toBeTrue();
+    } finally {
+      jasmine.clock().uninstall();
+    }
   });
 
   it('accepts the earliest allowed start time and keeps the 8h 15min base', () => {

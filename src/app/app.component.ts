@@ -24,14 +24,24 @@ interface DurationFormGroup extends FormGroup<{
 type ResultState = 'beforeStart' | 'inProgress' | 'complete';
 type AdjustmentKind = 'overtimePickup' | 'undertimeMakeup';
 type ThemeMode = 'light' | 'dark';
-type AccentColor = 'violet' | 'green' | 'red' | 'yellow';
+type AccentColor = 'violet' | 'green' | 'red' | 'pink' | 'yellow';
 type FavoriteHour = 6 | 7 | 8 | null;
 type TabDisplayMode = 'endTime' | 'remainingTime';
+type CardDisplayMode = 'timeline' | 'standard';
 
 interface ResultPayload {
   endTime: string;
+  earlyEndTime: string;
+  lateEndTime: string;
   remainingLabel: string;
+  remainingClockLabel: string;
+  earlyRemainingLabel: string;
+  lateRemainingLabel: string;
   remainingTitleLabel: string;
+  reachedEarly: boolean;
+  reachedStandard: boolean;
+  reachedLate: boolean;
+  progressPercent: number;
   message: string;
   state: ResultState;
   startTime: string;
@@ -43,6 +53,8 @@ interface AppSettings {
   theme: ThemeMode;
   favoriteHour: FavoriteHour;
   tabDisplayMode: TabDisplayMode;
+  endTimeDisplayMode: CardDisplayMode;
+  remainingTimeDisplayMode: CardDisplayMode;
   accentByTheme: Record<ThemeMode, AccentColor>;
 }
 
@@ -74,6 +86,7 @@ interface DailyPlanSnapshot {
 })
 export class AppComponent implements OnDestroy {
   private readonly baseMinutes = 8 * 60 + 15;
+  private readonly flexMinutes = 15;
   private readonly minStartMinutes = 5 * 60 + 30;
   private readonly maxEndMinutes = 21 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
@@ -87,6 +100,8 @@ export class AppComponent implements OnDestroy {
     theme: 'light',
     favoriteHour: null,
     tabDisplayMode: 'endTime',
+    endTimeDisplayMode: 'timeline',
+    remainingTimeDisplayMode: 'timeline',
     accentByTheme: {
       light: 'violet',
       dark: 'green',
@@ -97,6 +112,7 @@ export class AppComponent implements OnDestroy {
     { value: 'violet', label: 'Niebiesko-fioletowy' },
     { value: 'green', label: 'Zielony' },
     { value: 'red', label: 'Czerwony' },
+    { value: 'pink', label: 'Różowy' },
     { value: 'yellow', label: 'Żółty' },
   ];
   readonly favoriteHourOptions: {
@@ -430,6 +446,12 @@ export class AppComponent implements OnDestroy {
     tabDisplayMode: this.fb.control<TabDisplayMode>('endTime', {
       nonNullable: true,
     }),
+    endTimeDisplayMode: this.fb.control<CardDisplayMode>('timeline', {
+      nonNullable: true,
+    }),
+    remainingTimeDisplayMode: this.fb.control<CardDisplayMode>('timeline', {
+      nonNullable: true,
+    }),
     favoriteHour: this.fb.control<FavoriteHour>(
       null,
       this.favoriteHourValidatorFn,
@@ -468,6 +490,8 @@ export class AppComponent implements OnDestroy {
   private dynamicCardTimeouts: ReturnType<typeof setTimeout>[] = [];
   private dynamicCardHighlightTimeouts: ReturnType<typeof setTimeout>[] = [];
   private countdownTargetSeconds: number | null = null;
+  private countdownStartSeconds: number | null = null;
+  private countdownDateKey: string | null = null;
   private messageContext: {
     dayName: string;
     startLabel: string;
@@ -485,6 +509,8 @@ export class AppComponent implements OnDestroy {
         darkMode: settings.theme === 'dark',
         accentColor: this.getActiveAccent(settings),
         tabDisplayMode: settings.tabDisplayMode,
+        endTimeDisplayMode: settings.endTimeDisplayMode,
+        remainingTimeDisplayMode: settings.remainingTimeDisplayMode,
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -517,6 +543,12 @@ export class AppComponent implements OnDestroy {
     this.configForm.controls.tabDisplayMode.valueChanges.subscribe(
       (tabDisplayMode) => this.syncTabDisplayModeFromConfig(tabDisplayMode),
     );
+    this.configForm.controls.endTimeDisplayMode.valueChanges.subscribe((mode) =>
+      this.syncCardDisplayModeFromConfig('endTimeDisplayMode', mode),
+    );
+    this.configForm.controls.remainingTimeDisplayMode.valueChanges.subscribe((mode) =>
+      this.syncCardDisplayModeFromConfig('remainingTimeDisplayMode', mode),
+    );
 
     effect(() => {
       this.syncDocumentTitle(this.result(), this.settings().tabDisplayMode);
@@ -545,6 +577,11 @@ export class AppComponent implements OnDestroy {
   @HostBinding('class.accent-red')
   get accentRedClass(): boolean {
     return this.getActiveAccent(this.settings()) === 'red';
+  }
+
+  @HostBinding('class.accent-pink')
+  get accentPinkClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'pink';
   }
 
   @HostBinding('class.accent-yellow')
@@ -579,6 +616,8 @@ export class AppComponent implements OnDestroy {
         darkMode: settings.theme === 'dark',
         accentColor: this.getActiveAccent(settings),
         tabDisplayMode: settings.tabDisplayMode,
+        endTimeDisplayMode: settings.endTimeDisplayMode,
+        remainingTimeDisplayMode: settings.remainingTimeDisplayMode,
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -635,6 +674,10 @@ export class AppComponent implements OnDestroy {
 
   isTabDisplayModeSelected(tabDisplayMode: TabDisplayMode): boolean {
     return this.settings().tabDisplayMode === tabDisplayMode;
+  }
+
+  setCardDisplayMode(kind: 'endTimeDisplayMode' | 'remainingTimeDisplayMode', mode: CardDisplayMode): void {
+    this.configForm.controls[kind].setValue(mode);
   }
 
   addBreak(): void {
@@ -763,6 +806,7 @@ export class AppComponent implements OnDestroy {
     this.clearResultTransition();
     this.clearCountdown();
     this.countdownTargetSeconds = null;
+    this.countdownStartSeconds = null;
     this.messageContext = null;
 
     const startValue = this.form.controls.startTime.value as string;
@@ -823,8 +867,17 @@ export class AppComponent implements OnDestroy {
 
     const nextResult: ResultPayload = {
       endTime: endTimeLabel,
+      earlyEndTime: this.formatMinutes(totalMinutes - this.flexMinutes),
+      lateEndTime: this.formatMinutes(totalMinutes + this.flexMinutes),
       remainingLabel,
+      remainingClockLabel: this.formatRemainingClock(diffSeconds),
+      earlyRemainingLabel: this.formatRoundedRemaining(targetSecondsTotal - this.flexMinutes * 60 - nowSecondsTotal),
+      lateRemainingLabel: this.formatRoundedRemaining(targetSecondsTotal + this.flexMinutes * 60 - nowSecondsTotal),
       remainingTitleLabel: remainingForMessage,
+      reachedEarly: nowSecondsTotal >= targetSecondsTotal - this.flexMinutes * 60,
+      reachedStandard: workFinished,
+      reachedLate: nowSecondsTotal >= targetSecondsTotal + this.flexMinutes * 60,
+      progressPercent: this.calculateProgress(startSecondsTotal, targetSecondsTotal, nowSecondsTotal),
       message,
       state,
       startTime: startLabel,
@@ -845,11 +898,13 @@ export class AppComponent implements OnDestroy {
       this.messageContext = nextMessageContext;
       this.saveDailyPlan();
 
-      if (workFinished) {
+      if (nextResult.reachedLate) {
         return;
       }
 
       this.countdownTargetSeconds = targetSecondsTotal;
+      this.countdownStartSeconds = startSecondsTotal;
+      this.countdownDateKey = this.getTodayKey(now);
       this.startCountdown();
     };
 
@@ -995,8 +1050,7 @@ export class AppComponent implements OnDestroy {
     return localStorage;
   }
 
-  private getTodayKey(): string {
-    const today = new Date();
+  private getTodayKey(today = new Date()): string {
     const month = (today.getMonth() + 1).toString().padStart(2, '0');
     const day = today.getDate().toString().padStart(2, '0');
     return `${today.getFullYear()}-${month}-${day}`;
@@ -1250,6 +1304,8 @@ export class AppComponent implements OnDestroy {
         tabDisplayMode: this.normalizeTabDisplayMode(
           parsedSettings.tabDisplayMode,
         ),
+        endTimeDisplayMode: this.normalizeCardDisplayMode(parsedSettings.endTimeDisplayMode),
+        remainingTimeDisplayMode: this.normalizeCardDisplayMode(parsedSettings.remainingTimeDisplayMode),
         accentByTheme: this.normalizeAccentByTheme(
           parsedSettings.accentByTheme,
         ),
@@ -1309,6 +1365,18 @@ export class AppComponent implements OnDestroy {
       tabDisplayMode,
     };
 
+    this.settings.set(nextSettings);
+    this.saveSettings(nextSettings);
+  }
+
+  private syncCardDisplayModeFromConfig(
+    kind: 'endTimeDisplayMode' | 'remainingTimeDisplayMode',
+    mode: CardDisplayMode,
+  ): void {
+    const nextSettings: AppSettings = {
+      ...this.settings(),
+      [kind]: mode,
+    };
     this.settings.set(nextSettings);
     this.saveSettings(nextSettings);
   }
@@ -1435,6 +1503,10 @@ export class AppComponent implements OnDestroy {
     return value === 'remainingTime' ? 'remainingTime' : 'endTime';
   }
 
+  private normalizeCardDisplayMode(value: unknown): CardDisplayMode {
+    return value === 'standard' ? 'standard' : 'timeline';
+  }
+
   private normalizeAccentByTheme(
     value: unknown,
   ): Record<ThemeMode, AccentColor> {
@@ -1457,6 +1529,7 @@ export class AppComponent implements OnDestroy {
       value === 'violet' ||
       value === 'green' ||
       value === 'red' ||
+      value === 'pink' ||
       value === 'yellow'
     )
       ? value
@@ -1510,9 +1583,29 @@ export class AppComponent implements OnDestroy {
     return `${hours}h ${minutes}min ${seconds}s`;
   }
 
+  private formatRemainingClock(diffSeconds: number): string {
+    const { hours, minutes, seconds } = this.splitDuration(diffSeconds);
+    return [hours, minutes, seconds]
+      .map((part) => part.toString().padStart(2, '0'))
+      .join(':');
+  }
+
   private formatRemainingMessage(diffSeconds: number): string {
     const { hours, minutes } = this.splitDuration(diffSeconds);
     return `${hours}h ${minutes}min`;
+  }
+
+  private formatRoundedRemaining(diffSeconds: number): string {
+    const totalMinutes = Math.ceil(Math.max(0, diffSeconds) / 60);
+    return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`;
+  }
+
+  private calculateProgress(startSeconds: number, targetSeconds: number, nowSeconds: number): number {
+    const duration = targetSeconds - startSeconds;
+    if (duration <= 0) {
+      return nowSeconds >= targetSeconds ? 100 : 0;
+    }
+    return Math.round(Math.min(1, Math.max(0, (nowSeconds - startSeconds) / duration)) * 100);
   }
 
   private startCountdown(): void {
@@ -1522,31 +1615,32 @@ export class AppComponent implements OnDestroy {
 
     this.countdownInterval = setInterval(() => {
       const target = this.countdownTargetSeconds;
-      if (target === null) {
+      const start = this.countdownStartSeconds;
+      if (target === null || start === null) {
         this.clearCountdown();
         return;
       }
 
       const now = new Date();
-      const nowSecondsTotal =
-        now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-      let diffSeconds = target - nowSecondsTotal;
-
-      if (diffSeconds <= 0) {
-        diffSeconds = 0;
-      }
+      const nowSecondsTotal = this.countdownDateKey === this.getTodayKey(now)
+        ? now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+        : target + this.flexMinutes * 60;
+      const diffSeconds = Math.max(0, target - nowSecondsTotal);
+      const reachedEarly = nowSecondsTotal >= target - this.flexMinutes * 60;
+      const reachedStandard = nowSecondsTotal >= target;
+      const reachedLate = nowSecondsTotal >= target + this.flexMinutes * 60;
 
       this.result.update((current) => {
         if (!current) {
           return current;
         }
 
-        const shouldComplete = diffSeconds === 0;
-        let nextState = current.state;
+        const nextState: ResultState = nowSecondsTotal < start
+          ? 'beforeStart'
+          : reachedStandard ? 'complete' : 'inProgress';
         let nextMessage = current.message;
 
-        if (shouldComplete && current.state !== 'complete') {
-          nextState = 'complete';
+        if (nextState !== current.state) {
           if (this.messageContext) {
             nextMessage = this.pickMessage(
               this.messageContext.dayName,
@@ -1563,13 +1657,21 @@ export class AppComponent implements OnDestroy {
           ...current,
           state: nextState,
           remainingLabel: this.formatRemainingLabel(diffSeconds),
+          remainingClockLabel: this.formatRemainingClock(diffSeconds),
+          earlyRemainingLabel: this.formatRoundedRemaining(target - this.flexMinutes * 60 - nowSecondsTotal),
+          lateRemainingLabel: this.formatRoundedRemaining(target + this.flexMinutes * 60 - nowSecondsTotal),
           remainingTitleLabel: this.formatRemainingMessage(diffSeconds),
+          reachedEarly,
+          reachedStandard,
+          reachedLate,
+          progressPercent: this.calculateProgress(start, target, nowSecondsTotal),
           message: nextMessage,
         };
       });
 
-      if (diffSeconds === 0) {
+      if (reachedLate) {
         this.countdownTargetSeconds = null;
+        this.countdownStartSeconds = null;
         this.clearCountdown();
       }
     }, 1000);
@@ -1580,6 +1682,7 @@ export class AppComponent implements OnDestroy {
       clearInterval(this.countdownInterval);
       this.countdownInterval = null;
     }
+    this.countdownDateKey = null;
   }
 
   private clearResultTransition(): void {

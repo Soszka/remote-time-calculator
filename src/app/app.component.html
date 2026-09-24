@@ -366,23 +366,68 @@
               {{ payload.breaksLabel }}
             </span>
           </div>
-          <button type="button" class="edit-button" (click)="editPlan()">
-            Edytuj
-          </button>
+          <div class="toolbar-actions">
+            <div
+              class="work-progress"
+              [class.in-progress]="payload.state === 'inProgress'"
+              [class.complete]="payload.state === 'complete'"
+              role="progressbar"
+              [attr.aria-valuenow]="payload.progressPercent"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              [attr.aria-label]="'Ukończono ' + payload.progressPercent + '% czasu do standardowego wyjścia'"
+              [attr.title]="payload.progressPercent + '% czasu do standardowego wyjścia'"
+            >
+              <span>{{ payload.progressPercent }}%</span>
+            </div>
+            <button type="button" class="edit-button" (click)="editPlan()">
+              Edytuj
+            </button>
+          </div>
         </div>
         <div class="summary-line">
-          <article class="summary-item">
+          <article class="summary-item" *ngIf="settings().endTimeDisplayMode === 'standard'">
             <div class="summary-icon" aria-hidden="true">🚪</div>
             <div class="summary-content">
-              <span class="summary-label">Wyjście o</span>
+              <span class="summary-label">Wyjście</span>
               <span class="summary-value">{{ payload.endTime }}</span>
             </div>
           </article>
-          <article class="summary-item">
+          <article class="summary-item timeline-item" *ngIf="settings().endTimeDisplayMode === 'timeline'">
+            <div class="timeline-heading">Wyjście</div>
+            <div class="milestone-timeline" [class.early-reached]="payload.reachedEarly" [class.standard-reached]="payload.reachedStandard" [class.late-reached]="payload.reachedLate">
+              <div class="timeline-track" aria-hidden="true">
+                <span class="timeline-dot"></span><span class="timeline-link"></span>
+                <span class="timeline-dot main-dot"></span><span class="timeline-link"></span>
+                <span class="timeline-dot"></span>
+              </div>
+              <div class="timeline-values">
+                <div class="timeline-point"><span class="visually-hidden">15 minut wcześniej: </span><strong>{{ payload.earlyEndTime }}</strong></div>
+                <div class="timeline-point main-point"><span class="visually-hidden">Standardowo: </span><strong>{{ payload.endTime }}</strong></div>
+                <div class="timeline-point"><span class="visually-hidden">15 minut później: </span><strong>{{ payload.lateEndTime }}</strong></div>
+              </div>
+            </div>
+          </article>
+          <article class="summary-item" *ngIf="settings().remainingTimeDisplayMode === 'standard'">
             <div class="summary-icon" aria-hidden="true">⏳</div>
             <div class="summary-content">
-              <span class="summary-label">Czas do końca</span>
+              <span class="summary-label">Czas</span>
               <span class="summary-value">{{ payload.remainingLabel }}</span>
+            </div>
+          </article>
+          <article class="summary-item timeline-item remaining-timeline" *ngIf="settings().remainingTimeDisplayMode === 'timeline'">
+            <div class="timeline-heading">Czas</div>
+            <div class="milestone-timeline" [class.early-reached]="payload.reachedEarly" [class.standard-reached]="payload.reachedStandard" [class.late-reached]="payload.reachedLate">
+              <div class="timeline-track" aria-hidden="true">
+                <span class="timeline-dot"></span><span class="timeline-link"></span>
+                <span class="timeline-dot main-dot"></span><span class="timeline-link"></span>
+                <span class="timeline-dot"></span>
+              </div>
+              <div class="timeline-values">
+                <div class="timeline-point"><span class="visually-hidden">Do wcześniejszego wyjścia: </span><strong>{{ payload.earlyRemainingLabel }}</strong></div>
+                <div class="timeline-point main-point"><span class="visually-hidden">Do standardowego wyjścia: </span><strong>{{ payload.remainingClockLabel }}</strong></div>
+                <div class="timeline-point"><span class="visually-hidden">Do późniejszego wyjścia: </span><strong>{{ payload.lateRemainingLabel }}</strong></div>
+              </div>
             </div>
           </article>
         </div>
@@ -465,6 +510,22 @@
             >
               {{ option.label }}
             </button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <span id="end-time-display-label" class="config-label">Wyświetlanie godziny wyjścia</span>
+          <div class="title-segment" role="radiogroup" aria-labelledby="end-time-display-label">
+            <button type="button" role="radio" [class.active]="settings().endTimeDisplayMode === 'standard'" [attr.aria-checked]="settings().endTimeDisplayMode === 'standard'" (click)="setCardDisplayMode('endTimeDisplayMode', 'standard')">Standardowa</button>
+            <button type="button" role="radio" [class.active]="settings().endTimeDisplayMode === 'timeline'" [attr.aria-checked]="settings().endTimeDisplayMode === 'timeline'" (click)="setCardDisplayMode('endTimeDisplayMode', 'timeline')">Oś czasu ±15 min</button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <span id="remaining-time-display-label" class="config-label">Wyświetlanie czasu do końca</span>
+          <div class="title-segment" role="radiogroup" aria-labelledby="remaining-time-display-label">
+            <button type="button" role="radio" [class.active]="settings().remainingTimeDisplayMode === 'standard'" [attr.aria-checked]="settings().remainingTimeDisplayMode === 'standard'" (click)="setCardDisplayMode('remainingTimeDisplayMode', 'standard')">Standardowy</button>
+            <button type="button" role="radio" [class.active]="settings().remainingTimeDisplayMode === 'timeline'" [attr.aria-checked]="settings().remainingTimeDisplayMode === 'timeline'" (click)="setCardDisplayMode('remainingTimeDisplayMode', 'timeline')">Oś czasu ±15 min</button>
           </div>
         </div>
 

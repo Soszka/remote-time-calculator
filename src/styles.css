@@ -218,6 +218,40 @@ app-root.accent-yellow {
   --accent-firework-glow: rgba(217, 119, 6, 0.58);
 }
 
+app-root.accent-pink {
+  --accent-text: #be185d;
+  --accent-solid: #ec4899;
+  --accent-gradient-start: #be185d;
+  --accent-gradient-end: #f9a8d4;
+  --accent-save-gradient-end: #f472b6;
+  --accent-control-bg: rgba(236, 72, 153, 0.12);
+  --accent-control-bg-hover: rgba(236, 72, 153, 0.2);
+  --accent-focus-ring: rgba(236, 72, 153, 0.42);
+  --accent-focus-ring-soft: rgba(236, 72, 153, 0.36);
+  --accent-input-inset: rgba(236, 72, 153, 0.1);
+  --accent-input-shadow: rgba(236, 72, 153, 0.18);
+  --accent-ghost-hover: rgba(236, 72, 153, 0.14);
+  --accent-row-bg: rgba(236, 72, 153, 0.08);
+  --accent-alt-row-bg: rgba(244, 114, 182, 0.1);
+  --accent-segment-bg: rgba(236, 72, 153, 0.1);
+  --accent-primary-shadow: rgba(190, 24, 93, 0.2);
+  --accent-primary-shadow-hover: rgba(236, 72, 153, 0.25);
+  --accent-save-shadow: rgba(190, 24, 93, 0.18);
+  --accent-save-shadow-hover: rgba(244, 114, 182, 0.25);
+  --accent-settings-shadow: rgba(190, 24, 93, 0.15);
+  --accent-sweep-primary: rgba(190, 24, 93, 0.2);
+  --accent-sweep-secondary: rgba(244, 114, 182, 0.2);
+  --accent-dynamic-shadow: rgba(236, 72, 153, 0.15);
+  --accent-dynamic-shadow-soft: rgba(236, 72, 153, 0.1);
+  --accent-button-background: linear-gradient(135deg, #9d174d, #db2777 55%, #f472b6);
+  --accent-button-border: rgba(255, 255, 255, 0.25);
+  --accent-button-ambient: rgba(190, 24, 93, 0.19);
+  --accent-highlight-background: linear-gradient(145deg, #a21caf, #ec4899 58%, #f9a8d4);
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(236, 72, 153, 0.38));
+  --accent-comet-tail: rgba(236, 72, 153, 0);
+  --accent-firework-glow: rgba(244, 114, 182, 0.65);
+}
+
 app-root.dark-mode {
   --accent-text: #5eead4;
   --accent-solid: #14b8a6;
@@ -439,6 +473,41 @@ app-root.dark-mode.accent-yellow {
   --accent-toast-bg: #fef3c7;
 }
 
+app-root.dark-mode.accent-pink {
+  --accent-text: #f9a8d4;
+  --accent-solid: #ec4899;
+  --accent-gradient-start: #9d174d;
+  --accent-gradient-end: #f472b6;
+  --accent-save-gradient-end: #ec4899;
+  --accent-control-bg: rgba(236, 72, 153, 0.16);
+  --accent-control-bg-hover: rgba(236, 72, 153, 0.25);
+  --accent-focus-ring: rgba(244, 114, 182, 0.46);
+  --accent-focus-ring-soft: rgba(244, 114, 182, 0.38);
+  --accent-input-shadow: rgba(236, 72, 153, 0.18);
+  --accent-ghost-hover: rgba(236, 72, 153, 0.15);
+  --accent-row-bg: rgba(236, 72, 153, 0.09);
+  --accent-alt-row-bg: rgba(244, 114, 182, 0.12);
+  --accent-primary-shadow: rgba(236, 72, 153, 0.17);
+  --accent-primary-shadow-hover: rgba(244, 114, 182, 0.23);
+  --accent-save-shadow: rgba(236, 72, 153, 0.18);
+  --accent-save-shadow-hover: rgba(244, 114, 182, 0.24);
+  --accent-settings-shadow: rgba(236, 72, 153, 0.16);
+  --accent-dynamic-shadow: rgba(236, 72, 153, 0.15);
+  --accent-dynamic-shadow-soft: rgba(236, 72, 153, 0.1);
+  --accent-button-background: radial-gradient(circle at 25% 40%, rgba(236, 72, 153, 0.23), transparent 40%), linear-gradient(135deg, #281824, #35152c 55%, #261727);
+  --accent-button-border: rgba(249, 168, 212, 0.22);
+  --accent-button-ambient: rgba(236, 72, 153, 0.13);
+  --accent-highlight-background: radial-gradient(circle at 20% 0%, rgba(244, 114, 182, 0.25), transparent 45%), linear-gradient(145deg, #29212b, #1b1720 55%, #3b1733);
+  --accent-highlight-border: 1px solid rgba(249, 168, 212, 0.33);
+  --accent-highlight-shadow: 0 0 0 1px rgba(244, 114, 182, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 42px rgba(0, 0, 0, 0.28);
+  --accent-highlight-text-shadow: none;
+  --accent-summary-border: 1px solid rgba(249, 168, 212, 0.16);
+  --accent-sparkle-filter: drop-shadow(0 0 12px rgba(236, 72, 153, 0.4));
+  --accent-comet-tail: rgba(236, 72, 153, 0);
+  --accent-firework-glow: rgba(244, 114, 182, 0.65);
+  --accent-toast-bg: #fce7f3;
+}
+
 app-root input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
@@ -540,6 +609,10 @@ app-root .favorite-hour-picker {
   padding: 0.15rem 0 0.1rem;
 }
 
+app-root .accent-picker {
+  grid-template-columns: repeat(5, var(--config-circle-size));
+}
+
 app-root .accent-swatch {
   --swatch-gradient: linear-gradient(135deg, #4f46e5, #22d3ee);
   --swatch-shadow: rgba(79, 70, 229, 0.22);
@@ -612,6 +685,11 @@ app-root .accent-swatch-red {
   --swatch-shadow: rgba(190, 18, 60, 0.2);
 }
 
+app-root .accent-swatch-pink {
+  --swatch-gradient: linear-gradient(135deg, #be185d, #f9a8d4);
+  --swatch-shadow: rgba(190, 24, 93, 0.23);
+}
+
 app-root .accent-swatch-yellow {
   --swatch-gradient: linear-gradient(135deg, #b45309, #fde047);
   --swatch-shadow: rgba(180, 83, 9, 0.2);
@@ -630,6 +708,11 @@ app-root.dark-mode .accent-swatch-green {
 app-root.dark-mode .accent-swatch-red {
   --swatch-gradient: linear-gradient(135deg, #9f1239, #f43f5e);
   --swatch-shadow: rgba(251, 113, 133, 0.2);
+}
+
+app-root.dark-mode .accent-swatch-pink {
+  --swatch-gradient: linear-gradient(135deg, #9d174d, #f472b6);
+  --swatch-shadow: rgba(244, 114, 182, 0.22);
 }
 
 app-root.dark-mode .accent-swatch-yellow {
@@ -850,6 +933,46 @@ app-root .primary-button:not(:disabled):hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     0 13px 26px var(--accent-primary-shadow-hover),
     0 6px 14px rgba(15, 23, 42, 0.1);
+}
+
+app-root:not(.dark-mode) .primary-button {
+  border-color: color-mix(in srgb, var(--accent-solid) 26%, #cbd5e1);
+  background:
+    radial-gradient(circle at 10% 0%, var(--accent-control-bg-hover), transparent 42%),
+    radial-gradient(circle at 90% 100%, var(--accent-control-bg), transparent 42%),
+    linear-gradient(120deg, #f9faff, #edf2f9 55%, #f6f8fc);
+  background-size: 100% 100%;
+  color: var(--accent-text);
+  text-shadow: none;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 var(--accent-focus-ring-soft),
+    0 12px 26px rgba(30, 41, 59, 0.11),
+    0 4px 12px var(--accent-settings-shadow);
+}
+
+app-root:not(.dark-mode) .primary-button:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--accent-solid) 45%, #cbd5e1);
+  background:
+    radial-gradient(circle at 10% 0%, var(--accent-control-bg-hover), transparent 42%),
+    radial-gradient(circle at 90% 100%, var(--accent-control-bg-hover), transparent 42%),
+    linear-gradient(120deg, #f7f9fd, #e8eef8 55%, #f2f6fc);
+  background-size: 100% 100%;
+  filter: none;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 var(--accent-focus-ring),
+    0 15px 30px rgba(30, 41, 59, 0.14),
+    0 5px 15px var(--accent-settings-shadow);
+}
+
+app-root:not(.dark-mode) .primary-button:disabled {
+  box-shadow: none;
+}
+
+app-root .primary-button:focus-visible {
+  outline: 3px solid var(--accent-focus-ring);
+  outline-offset: 3px;
 }
 
 app-root.dark-mode .primary-button {
@@ -1108,7 +1231,7 @@ app-root.dark-mode .card {
 
 .compact-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -1146,6 +1269,8 @@ app-root.dark-mode .card {
   display: flex;
   flex: 1 1 auto;
   flex-wrap: wrap;
+  align-items: center;
+  align-self: center;
   gap: 0.45rem;
   min-width: 0;
 }
@@ -1971,3 +2096,326 @@ app-root .adjustment-row {
     opacity: 0;
   }
 }
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.work-progress {
+  --progress-center: color-mix(in srgb, var(--accent-gradient-start) 28%, #17212c);
+  --progress-track: rgba(18, 37, 48, 0.52);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 3.15rem;
+  height: 3.15rem;
+  border-radius: 50%;
+  background: var(--progress-track);
+  box-shadow: 0 0 0 1px var(--accent-focus-ring-soft), 0 0 16px var(--accent-input-shadow);
+  color: #fff;
+  font-size: 0.73rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from -90deg, transparent 0 52%, var(--accent-solid) 64%, color-mix(in srgb, var(--accent-gradient-end) 55%, #fff) 80%, var(--accent-gradient-end) 92%, transparent 100%);
+  filter: drop-shadow(0 0 7px var(--accent-gradient-end));
+  pointer-events: none;
+}
+
+.work-progress.in-progress::before {
+  animation: progressOrbit 1.8s linear infinite;
+}
+
+.work-progress.complete::before {
+  background: conic-gradient(from -90deg, var(--accent-solid), var(--accent-gradient-end), var(--accent-solid));
+  filter: drop-shadow(0 0 5px var(--accent-gradient-end));
+}
+
+.work-progress span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 50%;
+  background: var(--progress-center);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  text-shadow: none;
+}
+
+app-root.dark-mode .work-progress {
+  --progress-center: #1d2028;
+  --progress-track: rgba(177, 188, 209, 0.19);
+}
+
+@keyframes progressOrbit {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-progress.in-progress::before { animation: none; }
+}
+
+.timeline-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.1), transparent 57%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-gradient-start) 38%, #122336), color-mix(in srgb, var(--accent-gradient-end) 27%, #18263c));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13), 0 14px 28px rgba(10, 20, 40, 0.1);
+}
+
+app-root.dark-mode .timeline-item {
+  background:
+    radial-gradient(circle at 52% 35%, var(--accent-control-bg), transparent 54%),
+    rgba(6, 12, 18, 0.7);
+}
+
+app-root:not(.dark-mode) .highlight-card {
+  background:
+    radial-gradient(circle at 6% 0%, var(--accent-focus-ring-soft), transparent 43%),
+    radial-gradient(circle at 95% 100%, var(--accent-control-bg-hover), transparent 48%),
+    linear-gradient(145deg, #fbfcff, #eef2f8 58%, #e7edf6);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: inset 0 1px 0 #fff, 0 24px 52px rgba(30, 41, 59, 0.12), 0 6px 20px var(--accent-settings-shadow);
+  color: #233047;
+  text-shadow: none;
+}
+
+app-root:not(.dark-mode) .summary-item,
+app-root:not(.dark-mode) .compact-feedback-box {
+  background:
+    radial-gradient(circle at 50% 30%, var(--accent-control-bg), transparent 70%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(244, 247, 252, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: inset 0 1px 0 #fff, 0 14px 30px rgba(30, 41, 59, 0.07);
+}
+
+app-root:not(.dark-mode) .timeline-heading,
+app-root:not(.dark-mode) .summary-label {
+  color: #526077;
+  opacity: 1;
+}
+
+app-root:not(.dark-mode) .timeline-point strong,
+app-root:not(.dark-mode) .summary-value {
+  color: #29364b;
+}
+
+app-root:not(.dark-mode) .timeline-point.main-point strong {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+
+app-root:not(.dark-mode) .timeline-dot {
+  border-color: #8795aa;
+  background: #f8fafc;
+  box-shadow: 0 0 0 4px var(--accent-segment-bg);
+}
+
+app-root:not(.dark-mode) .timeline-dot.main-dot {
+  box-shadow: 0 0 0 5px var(--accent-segment-bg);
+}
+
+app-root:not(.dark-mode) .timeline-link {
+  background: #c1cbda;
+}
+
+app-root:not(.dark-mode) .milestone-timeline.early-reached .timeline-dot:first-child,
+app-root:not(.dark-mode) .milestone-timeline.standard-reached .timeline-dot.main-dot,
+app-root:not(.dark-mode) .milestone-timeline.late-reached .timeline-dot:last-child {
+  border-color: var(--accent-solid);
+  background: var(--accent-solid);
+  box-shadow: 0 0 0 5px var(--accent-control-bg-hover), 0 0 15px var(--accent-focus-ring);
+}
+
+app-root:not(.dark-mode) .milestone-timeline.early-reached .timeline-link:nth-child(2),
+app-root:not(.dark-mode) .milestone-timeline.standard-reached .timeline-link:nth-child(4) {
+  background: linear-gradient(90deg, var(--accent-solid), var(--accent-gradient-end));
+  box-shadow: 0 0 10px var(--accent-focus-ring-soft);
+}
+
+app-root:not(.dark-mode) .compact-detail {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.72);
+  color: #344156;
+}
+
+app-root:not(.dark-mode) .edit-button {
+  border-color: var(--accent-focus-ring-soft);
+  background: var(--accent-control-bg);
+  color: var(--accent-text);
+  box-shadow: none;
+}
+
+app-root:not(.dark-mode) .edit-button:hover {
+  border-color: var(--accent-solid);
+  background: var(--accent-control-bg-hover);
+}
+
+app-root:not(.dark-mode) .edit-button:focus-visible {
+  outline-color: var(--accent-solid);
+}
+
+app-root:not(.dark-mode) .work-progress {
+  --progress-center: color-mix(in srgb, var(--accent-solid) 7%, #fff);
+  --progress-track: #d7e0ec;
+  color: var(--accent-text);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.25), 0 0 14px var(--accent-input-shadow);
+}
+
+app-root:not(.dark-mode) .work-progress span {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+app-root:not(.dark-mode) .compact-feedback {
+  color: #3c4960;
+}
+
+.timeline-heading {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.milestone-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  min-width: 0;
+}
+
+.timeline-track {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) 1.35rem minmax(0, 1fr) 1rem;
+  align-items: center;
+  width: 70%;
+  margin: 0 auto;
+  min-height: 1.5rem;
+}
+
+.timeline-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin: auto;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  background: #27314c;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+  transition: background 0.45s ease, box-shadow 0.45s ease, transform 0.45s ease;
+}
+
+.timeline-dot.main-dot {
+  width: 1.12rem;
+  height: 1.12rem;
+  border-width: 2px;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.11);
+}
+
+.timeline-link {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.25);
+  transition: background 0.45s ease, box-shadow 0.45s ease;
+}
+
+.milestone-timeline.early-reached .timeline-dot:first-child,
+.milestone-timeline.standard-reached .timeline-dot.main-dot,
+.milestone-timeline.late-reached .timeline-dot:last-child {
+  background: #fff;
+  transform: scale(1.13);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2), 0 0 19px 7px var(--accent-focus-ring);
+}
+
+.milestone-timeline.early-reached .timeline-link:nth-child(2),
+.milestone-timeline.standard-reached .timeline-link:nth-child(4) {
+  background: linear-gradient(90deg, #fff, var(--accent-gradient-end));
+  box-shadow: 0 0 12px 3px var(--accent-focus-ring);
+}
+
+.timeline-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  text-align: center;
+  min-width: 0;
+}
+
+.timeline-point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.timeline-point strong {
+  font-size: clamp(0.78rem, 2.2vw, 1.1rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.timeline-point.main-point strong {
+  font-size: clamp(1.6rem, 5vw, 2.65rem);
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.42);
+}
+
+.remaining-timeline .timeline-point strong {
+  font-size: clamp(0.72rem, 2vw, 1rem);
+}
+
+.remaining-timeline .timeline-point.main-point strong {
+  font-size: clamp(1.26rem, 4.2vw, 2.15rem);
+}
+
+@media (max-width: 430px) {
+  .compact-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-actions {
+    margin-left: auto;
+  }
+
+  .timeline-item {
+    padding-inline: 0.7rem;
+  }
+
+  .timeline-point strong {
+    font-size: 0.82rem;
+  }
+
+  .timeline-point.main-point strong {
+    font-size: 1.55rem;
+  }
+
+  .remaining-timeline .timeline-point strong {
+    font-size: 0.69rem;
+  }
+
+  .remaining-timeline .timeline-point.main-point strong {
+    font-size: 1.05rem;
+  }
+}
+
