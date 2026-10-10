@@ -526,7 +526,22 @@ app-root .icon-button.settings-button {
   height: 54px;
   flex-basis: 54px;
   font-size: 1.65rem;
-  box-shadow: 0 10px 24px var(--accent-settings-shadow);
+  box-shadow: var(--control-shadow);
+}
+
+/* Material person/close SVGs share font-independent, centred geometry. */
+app-root .control-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+app-root .settings-button .user-icon {
+  width: 36px;
+  height: 36px;
 }
 
 app-root .icon-button.settings-button::after,
@@ -580,11 +595,7 @@ app-root .icon-button.settings-button:focus-visible::before {
 }
 
 app-root .icon-button.settings-button:hover {
-  transform: translateY(-1px);
-}
-
-app-root.dark-mode .icon-button.settings-button {
-  box-shadow: 0 10px 24px var(--accent-settings-shadow);
+  box-shadow: var(--control-shadow-hover);
 }
 
 app-root.dark-mode .icon-button.settings-button::after,
@@ -610,7 +621,7 @@ app-root .favorite-hour-picker {
 }
 
 app-root .accent-picker {
-  grid-template-columns: repeat(5, var(--config-circle-size));
+  grid-template-columns: repeat(6, var(--config-circle-size));
 }
 
 app-root .accent-swatch {
@@ -619,18 +630,13 @@ app-root .accent-swatch {
   position: relative;
   width: var(--config-circle-size);
   height: var(--config-circle-size);
-  border: none;
+  border: 1px solid var(--form-card-rim);
   border-radius: 50%;
   padding: 0;
   background: var(--swatch-gradient);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.38),
-    0 10px 20px var(--swatch-shadow);
+  box-shadow: var(--control-shadow);
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    filter 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 app-root .accent-swatch::after {
@@ -646,9 +652,8 @@ app-root .accent-swatch::after {
   pointer-events: none;
 }
 
-app-root .accent-swatch:hover {
-  filter: saturate(1.08) brightness(1.03);
-  transform: translateY(-1px) scale(1.03);
+app-root .accent-swatch:not(.active):hover {
+  box-shadow: var(--control-shadow-hover);
 }
 
 app-root .accent-swatch:focus-visible {
@@ -657,17 +662,8 @@ app-root .accent-swatch:focus-visible {
 }
 
 app-root .accent-swatch.active {
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.98),
-    0 0 0 5px var(--accent-focus-ring),
-    0 12px 24px var(--swatch-shadow);
-}
-
-app-root.dark-mode .accent-swatch.active {
-  box-shadow:
-    0 0 0 2px #242831,
-    0 0 0 5px var(--accent-focus-ring),
-    0 12px 24px var(--swatch-shadow);
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 3px;
 }
 
 app-root .accent-swatch-violet {
@@ -693,6 +689,16 @@ app-root .accent-swatch-pink {
 app-root .accent-swatch-yellow {
   --swatch-gradient: linear-gradient(135deg, #b45309, #fde047);
   --swatch-shadow: rgba(180, 83, 9, 0.2);
+}
+
+app-root .accent-swatch-black {
+  --swatch-gradient: linear-gradient(135deg, #363636, #080808);
+  --swatch-shadow: rgba(0, 0, 0, 0.2);
+}
+
+app-root .accent-swatch-white {
+  --swatch-gradient: linear-gradient(135deg, #fff, #d6d6d6);
+  --swatch-shadow: rgba(255, 255, 255, 0.15);
 }
 
 app-root.dark-mode .accent-swatch-violet {
@@ -736,11 +742,12 @@ app-root .favorite-hour-option {
   position: relative;
   width: var(--config-circle-size);
   height: var(--config-circle-size);
-  border: 2px solid rgba(148, 163, 184, 0.42);
+  border: 1px solid var(--form-card-rim);
   border-radius: 50%;
   padding: 0;
-  background: linear-gradient(145deg, #ffffff, #f8fafc);
-  color: #334155;
+  background: var(--control-glass);
+  color: var(--control-ink);
+  box-shadow: var(--control-shadow);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -749,9 +756,7 @@ app-root .favorite-hour-option {
   font-weight: 800;
   line-height: 1;
   transition:
-    transform 0.2s ease,
     border-color 0.2s ease,
-    background 0.2s ease,
     color 0.2s ease,
     box-shadow 0.2s ease;
 }
@@ -792,23 +797,20 @@ app-root .favorite-hour-option.has-tooltip::after {
   transform: translate(-50%, 4px) rotate(45deg);
 }
 
-app-root .favorite-hour-option:hover,
-app-root .favorite-hour-option:focus-visible {
-  transform: translateY(-1px);
-  border-color: var(--accent-solid);
-  color: var(--accent-text);
-  box-shadow: 0 10px 20px var(--accent-input-shadow);
+app-root .favorite-hour-option:not(.active):hover {
+  color: var(--control-ink);
+  box-shadow: var(--control-shadow-hover);
 }
 
-app-root .favorite-hour-option.has-tooltip:hover::before,
-app-root .favorite-hour-option.has-tooltip:hover::after,
+app-root .favorite-hour-option.has-tooltip:not(.active):hover::before,
+app-root .favorite-hour-option.has-tooltip:not(.active):hover::after,
 app-root .favorite-hour-option.has-tooltip:focus-visible::before,
 app-root .favorite-hour-option.has-tooltip:focus-visible::after {
   opacity: 1;
   transform: translate(-50%, 0);
 }
 
-app-root .favorite-hour-option.has-tooltip:hover::after,
+app-root .favorite-hour-option.has-tooltip:not(.active):hover::after,
 app-root .favorite-hour-option.has-tooltip:focus-visible::after {
   transform: translate(-50%, 0) rotate(45deg);
 }
@@ -819,13 +821,10 @@ app-root .favorite-hour-option:focus-visible {
 }
 
 app-root .favorite-hour-option.active {
-  border-color: var(--accent-solid);
-  background: var(--accent-control-bg);
-  color: var(--accent-text);
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.98),
-    0 0 0 5px var(--accent-focus-ring),
-    0 12px 24px var(--accent-input-shadow);
+  background: var(--control-glass);
+  color: var(--control-ink);
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 3px;
 }
 
 app-root .favorite-hour-empty-icon {
@@ -848,12 +847,6 @@ app-root .favorite-hour-empty-icon::after {
   transform: translate(-50%, -50%) rotate(-42deg);
 }
 
-app-root.dark-mode .favorite-hour-option {
-  border-color: rgba(148, 163, 184, 0.28);
-  background: linear-gradient(145deg, #262a33, #20242c);
-  color: #e2e8f0;
-}
-
 app-root.dark-mode .favorite-hour-option.has-tooltip::before,
 app-root.dark-mode .favorite-hour-option.has-tooltip::after {
   background: #f8fafc;
@@ -867,29 +860,22 @@ app-root.dark-mode .favorite-hour-option.has-tooltip::before {
 app-root.dark-mode .favorite-hour-option:hover,
 app-root.dark-mode .favorite-hour-option:focus-visible,
 app-root.dark-mode .favorite-hour-option.active {
-  border-color: var(--accent-solid);
-  color: var(--accent-text);
+  color: var(--control-ink);
 }
 
 app-root.dark-mode .favorite-hour-option.active {
-  background: var(--accent-control-bg);
-  box-shadow:
-    0 0 0 2px #242831,
-    0 0 0 5px var(--accent-focus-ring),
-    0 12px 24px var(--accent-input-shadow);
+  background: var(--control-glass);
 }
 
 app-root .primary-button {
-  border: 1px solid var(--accent-button-border);
-  border-radius: 18px;
+  border: 1px solid var(--form-card-rim);
+  border-radius: 999px;
   padding: 1.08rem 1.2rem;
   font-size: 1.12rem;
   font-weight: 800;
   letter-spacing: 0.015em;
-  background: var(--accent-button-background);
-  background-position: 50% 50%;
-  background-size: 145% 140%;
-  color: #fff;
+  background: var(--control-primary-glass);
+  color: var(--control-ink);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -900,20 +886,12 @@ app-root .primary-button {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  text-shadow: 0 1px 14px rgba(15, 23, 42, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 10px 22px var(--accent-button-ambient),
-    0 4px 12px rgba(15, 23, 42, 0.08);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    filter 0.2s ease,
-    background-position 0.42s ease,
-    background-size 0.42s ease;
+  text-shadow: none;
+  box-shadow: var(--control-primary-shadow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-app-root .primary-button span {
+app-root .primary-button > span:not(.button-sheen):not(.button-ripple-layer) {
   position: relative;
   z-index: 1;
 }
@@ -925,49 +903,7 @@ app-root .primary-button:disabled {
 }
 
 app-root .primary-button:not(:disabled):hover {
-  transform: translateY(-2px);
-  filter: saturate(1.06) brightness(1.03);
-  background-position: 100% 50%;
-  background-size: 170% 145%;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 13px 26px var(--accent-primary-shadow-hover),
-    0 6px 14px rgba(15, 23, 42, 0.1);
-}
-
-app-root:not(.dark-mode) .primary-button {
-  border-color: color-mix(in srgb, var(--accent-solid) 26%, #cbd5e1);
-  background:
-    radial-gradient(circle at 10% 0%, var(--accent-control-bg-hover), transparent 42%),
-    radial-gradient(circle at 90% 100%, var(--accent-control-bg), transparent 42%),
-    linear-gradient(120deg, #f9faff, #edf2f9 55%, #f6f8fc);
-  background-size: 100% 100%;
-  color: var(--accent-text);
-  text-shadow: none;
-  box-shadow:
-    inset 0 1px 0 #fff,
-    inset 0 -2px 0 var(--accent-focus-ring-soft),
-    0 12px 26px rgba(30, 41, 59, 0.11),
-    0 4px 12px var(--accent-settings-shadow);
-}
-
-app-root:not(.dark-mode) .primary-button:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--accent-solid) 45%, #cbd5e1);
-  background:
-    radial-gradient(circle at 10% 0%, var(--accent-control-bg-hover), transparent 42%),
-    radial-gradient(circle at 90% 100%, var(--accent-control-bg-hover), transparent 42%),
-    linear-gradient(120deg, #f7f9fd, #e8eef8 55%, #f2f6fc);
-  background-size: 100% 100%;
-  filter: none;
-  box-shadow:
-    inset 0 1px 0 #fff,
-    inset 0 -2px 0 var(--accent-focus-ring),
-    0 15px 30px rgba(30, 41, 59, 0.14),
-    0 5px 15px var(--accent-settings-shadow);
-}
-
-app-root:not(.dark-mode) .primary-button:disabled {
-  box-shadow: none;
+  box-shadow: var(--control-primary-shadow-hover);
 }
 
 app-root .primary-button:focus-visible {
@@ -975,36 +911,23 @@ app-root .primary-button:focus-visible {
   outline-offset: 3px;
 }
 
-app-root.dark-mode .primary-button {
-  background: var(--accent-button-background);
-  color: #f8fafc;
-  text-shadow: 0 0 18px rgba(248, 250, 252, 0.18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 10px 22px var(--accent-button-ambient),
-    0 0 12px var(--accent-primary-shadow);
-}
-
-app-root.dark-mode .primary-button:not(:disabled):hover {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 14px 28px var(--accent-primary-shadow-hover),
-    0 0 16px var(--accent-button-ambient);
+/* Soft internal reflections use the same material as the smaller controls. */
+app-root .primary-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 72% 170% at 20% 145%, transparent 45%, color-mix(in srgb, var(--control-rim) 10%, transparent) 50%, transparent 59%),
+    radial-gradient(ellipse 76% 180% at 90% -65%, transparent 44%, color-mix(in srgb, var(--control-shine) 12%, transparent) 51%, transparent 60%);
 }
 
 app-root .primary-button::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(255, 255, 255, 0.18),
-      transparent 62%
-    ),
-    rgba(255, 255, 255, 0.06);
+  background: var(--accent-control-bg);
   border-radius: inherit;
   opacity: 0;
   z-index: 0;
@@ -1012,12 +935,8 @@ app-root .primary-button::after {
   transition: opacity 0.12s ease;
 }
 
-app-root .primary-button:not(:disabled):active {
-  transform: translateY(-1px) scale(0.997);
-}
-
 app-root .primary-button:not(:disabled):active::after {
-  opacity: 1;
+  opacity: 0.5;
 }
 
 app-root .field-hint {
@@ -1057,46 +976,61 @@ app-root .panel {
   position: relative;
   transform-origin: center;
   transition:
-    width 260ms cubic-bezier(0.16, 1, 0.3, 1),
-    padding 260ms cubic-bezier(0.16, 1, 0.3, 1),
-    gap 260ms cubic-bezier(0.16, 1, 0.3, 1),
     background 260ms ease,
-    box-shadow 260ms ease,
-    transform 260ms ease;
-}
-
-app-root .panel.switching-to-result {
-  animation: panelFocusOut 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-app-root .form {
-  transform-origin: center top;
-}
-
-app-root .form.form-switching-out {
-  pointer-events: none;
-  animation: formSwitchOut 220ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    box-shadow 260ms ease;
 }
 
 app-root .break-row,
 app-root .adjustment-row {
-  --dynamic-card-padding-y: 0.75rem;
-  max-height: 34rem;
   overflow: hidden;
   position: relative;
-  transform-origin: center top;
 }
 
-app-root .break-row.dynamic-card-enter,
-app-root .adjustment-row.dynamic-card-enter {
-  will-change: max-height, opacity, transform, padding, filter;
-  animation: dynamicCardEnter 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
+/* The native track animation opens the real slot and its spacing together. */
+app-root .dynamic-panel-frame {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr;
+  min-width: 0;
+}
+
+/* The rim follows the visible aperture, so its bottom edge never waits for
+   the full-height inner card to be revealed. The layout remains untouched. */
+app-root .motion-border-active {
+  overflow: hidden;
+}
+
+app-root .motion-border-active::before {
+  content: '';
+  position: absolute;
+  top: var(--motion-border-top, 0px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: var(--motion-shadow);
+  border-radius: var(--motion-radius);
+  pointer-events: none;
+  z-index: 2;
+}
+
+app-root .motion-border-active .motion-border-surface {
+  box-shadow: none !important;
+}
+
+app-root .panel-motion-content {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Clip the natural card size; flex containers must not squash fields during the reveal. */
+app-root .panel-motion-content > * {
+  flex-shrink: 0;
 }
 
 app-root .break-row.dynamic-card-leaving,
 app-root .adjustment-row.dynamic-card-leaving {
   pointer-events: none;
-  animation: dynamicCardLeave 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 app-root .break-row.dynamic-card-sweep::after,
@@ -1141,11 +1075,10 @@ app-root .adjustment-row.dynamic-card-leaving::after {
 .result-block {
   display: flex;
   flex-direction: column;
-  gap: 0.95rem;
+  gap: var(--calculator-gap);
   position: relative;
   isolation: isolate;
   transform-origin: center top;
-  animation: resultBlockEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .card {
@@ -1172,26 +1105,6 @@ app-root.dark-mode .card {
   gap: 0.6rem;
   position: relative;
   overflow: hidden;
-}
-
-.result-reveal .highlight-card {
-  animation: resultHeroEnter 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.result-reveal .highlight-card::before {
-  content: "";
-  position: absolute;
-  inset: -45%;
-  background: linear-gradient(
-    115deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.34) 48%,
-    transparent 66%
-  );
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-42%) rotate(10deg);
-  animation: resultShineSweep 880ms ease-out 120ms both;
 }
 
 .highlight-card.compact-highlight {
@@ -1237,31 +1150,26 @@ app-root.dark-mode .card {
 }
 
 .edit-button {
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  border: 1px solid var(--form-card-rim);
   border-radius: 999px;
   padding: 0.5rem 0.85rem;
-  background: rgba(255, 255, 255, 0.16);
-  color: #f8fafc;
+  background: var(--control-glass);
+  color: var(--control-ink);
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 0.86rem;
   font-weight: 800;
   line-height: 1;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition:
-    background 0.2s ease,
-    transform 0.2s ease,
-    border-color 0.2s ease;
+  box-shadow: var(--control-shadow);
+  transition: box-shadow 0.2s ease;
 }
 
 .edit-button:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: var(--control-shadow-hover);
 }
 
 .edit-button:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.62);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 3px;
 }
 
@@ -1279,11 +1187,12 @@ app-root.dark-mode .card {
   display: inline-flex;
   align-items: center;
   min-height: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--form-card-rim);
   border-radius: 999px;
   padding: 0.38rem 0.62rem;
-  background: rgba(15, 23, 42, 0.18);
-  color: rgba(248, 250, 252, 0.9);
+  background: var(--control-glass);
+  color: var(--control-ink);
+  box-shadow: var(--control-shadow);
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 1.2;
@@ -1329,14 +1238,6 @@ app-root.dark-mode .summary-item {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
   text-align: left;
   min-width: 0;
-}
-
-.result-reveal .summary-item {
-  animation: summaryItemPop 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.result-reveal .summary-item:nth-child(2) {
-  animation-delay: 80ms;
 }
 
 .summary-icon {
@@ -1390,15 +1291,6 @@ app-root.dark-mode .summary-item {
   line-height: 1.5;
 }
 
-.result-reveal .message-card,
-.result-reveal .compact-feedback-box {
-  animation: resultMessageEnter 460ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
-}
-
-.result-reveal .compact-toolbar {
-  animation: resultMessageEnter 420ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
-}
-
 app-root.dark-mode .message-card {
   color: #e2e8f0;
 }
@@ -1410,11 +1302,11 @@ app-root.dark-mode .message-card {
 
 @media (max-width: 720px) {
   app-root .panel {
-    gap: 1.45rem;
+    gap: var(--calculator-gap);
   }
 
   app-root .form {
-    gap: 1.05rem;
+    gap: var(--calculator-gap);
   }
 
   app-root input {
@@ -1435,7 +1327,6 @@ app-root.dark-mode .message-card {
 
   app-root .break-row,
   app-root .adjustment-row {
-    --dynamic-card-padding-y: 1.3rem;
     border-radius: 24px;
   }
 
@@ -1494,7 +1385,7 @@ app-root.dark-mode .message-card {
     padding-right: 4.6rem;
   }
 
-app-root .adjustment-row {
+  app-root .adjustment-row {
     padding: 1.25rem 1.05rem 1.3rem;
   }
 }
@@ -1508,71 +1399,6 @@ app-root .adjustment-row {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes dynamicCardEnter {
-  0% {
-    max-height: 0;
-    opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    transform: translateY(-18px) scaleX(0.98) scaleY(0.72);
-    box-shadow: 0 0 0 transparent;
-    filter: blur(7px) saturate(0.85);
-  }
-
-  46% {
-    max-height: 34rem;
-    opacity: 1;
-    padding-top: var(--dynamic-card-padding-y);
-    padding-bottom: var(--dynamic-card-padding-y);
-    transform: translateY(4px) scaleX(1.012) scaleY(1.035);
-    box-shadow: 0 18px 34px var(--accent-dynamic-shadow);
-    filter: blur(0) saturate(1.1);
-  }
-
-  72% {
-    opacity: 1;
-    transform: translateY(-1px) scaleX(0.998) scaleY(0.992);
-    box-shadow: 0 10px 22px var(--accent-dynamic-shadow-soft);
-    filter: saturate(1.08);
-  }
-
-  100% {
-    max-height: 34rem;
-    opacity: 1;
-    padding-top: var(--dynamic-card-padding-y);
-    padding-bottom: var(--dynamic-card-padding-y);
-    transform: translateY(0) scaleX(1) scaleY(1);
-    box-shadow: 0 0 0 transparent;
-    filter: saturate(1);
-  }
-}
-
-@keyframes dynamicCardLeave {
-  0% {
-    max-height: 34rem;
-    opacity: 1;
-    padding-top: var(--dynamic-card-padding-y);
-    padding-bottom: var(--dynamic-card-padding-y);
-    transform: translateY(0) scaleX(1) scaleY(1);
-    filter: blur(0) saturate(1);
-  }
-
-  36% {
-    opacity: 0.82;
-    transform: translateY(-4px) scaleX(1.01) scaleY(1.02);
-    filter: blur(0.5px) saturate(1.04);
-  }
-
-  100% {
-    max-height: 0;
-    opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    transform: translateY(-14px) scaleX(0.97) scaleY(0.68);
-    filter: blur(8px) saturate(0.75);
   }
 }
 
@@ -1592,125 +1418,29 @@ app-root .adjustment-row {
   }
 }
 
-@keyframes formSwitchOut {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(-14px) scale(0.985);
-    filter: blur(3px);
-  }
-}
-
-@keyframes panelFocusOut {
-  from {
-    transform: scale(1);
-  }
-
-  to {
-    transform: scale(0.99);
-  }
-}
-
-@keyframes resultBlockEnter {
-  0% {
-    opacity: 0;
-    transform: translateY(18px) scale(0.985);
-  }
-
-  60% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.006);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes resultHeroEnter {
-  0% {
-    opacity: 0;
-    transform: translateY(26px) scale(0.965);
-    filter: saturate(0.8);
-  }
-
-  62% {
-    opacity: 1;
-    transform: translateY(-4px) scale(1.012);
-    filter: saturate(1.12);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: saturate(1);
-  }
-}
-
-@keyframes resultShineSweep {
-  0% {
-    opacity: 0;
-    transform: translateX(-42%) rotate(10deg);
-  }
-
-  28% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translateX(42%) rotate(10deg);
-  }
-}
-
-@keyframes summaryItemPop {
-  0% {
-    opacity: 0;
-    transform: translateY(12px) scale(0.96);
-  }
-
-  66% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.012);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes resultMessageEnter {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   app-root .panel,
   app-root .panel.switching-to-result,
+  app-root .panel.switching-to-result .panel-header,
+  app-root .form.fade-in,
   app-root .form.form-switching-out,
   app-root .break-row,
   app-root .adjustment-row,
+  app-root .break-row.dynamic-card-enter,
+  app-root .adjustment-row.dynamic-card-enter,
+  app-root .break-row.dynamic-card-leaving,
+  app-root .adjustment-row.dynamic-card-leaving,
+  app-root .break-row.dynamic-card-enter > *,
+  app-root .adjustment-row.dynamic-card-enter > *,
   app-root .primary-button,
   .result-block,
+  .result-block.result-switching-out,
   .result-reveal .highlight-card,
   .result-reveal .summary-item,
   .result-reveal .message-card,
   .result-reveal .compact-feedback-box,
   .result-reveal .compact-toolbar,
+  .result-reveal .exit-slider,
   .fade-in {
     animation: none;
     transition: none;
@@ -2132,9 +1862,7 @@ app-root .adjustment-row {
   pointer-events: none;
 }
 
-.work-progress.in-progress::before {
-  animation: progressOrbit 1.8s linear infinite;
-}
+.work-progress.in-progress::before { animation: progressOrbit 2.4s linear infinite; }
 
 .work-progress.complete::before {
   background: conic-gradient(from -90deg, var(--accent-solid), var(--accent-gradient-end), var(--accent-solid));
@@ -2167,33 +1895,12 @@ app-root.dark-mode .work-progress {
   .work-progress.in-progress::before { animation: none; }
 }
 
-.timeline-item {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.65rem;
-  overflow: hidden;
-  position: relative;
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.1), transparent 57%),
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-gradient-start) 38%, #122336), color-mix(in srgb, var(--accent-gradient-end) 27%, #18263c));
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13), 0 14px 28px rgba(10, 20, 40, 0.1);
-}
-
-app-root.dark-mode .timeline-item {
-  background:
-    radial-gradient(circle at 52% 35%, var(--accent-control-bg), transparent 54%),
-    rgba(6, 12, 18, 0.7);
-}
-
 app-root:not(.dark-mode) .highlight-card {
   background:
     radial-gradient(circle at 6% 0%, var(--accent-focus-ring-soft), transparent 43%),
     radial-gradient(circle at 95% 100%, var(--accent-control-bg-hover), transparent 48%),
     linear-gradient(145deg, #fbfcff, #eef2f8 58%, #e7edf6);
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--form-card-rim);
   box-shadow: inset 0 1px 0 #fff, 0 24px 52px rgba(30, 41, 59, 0.12), 0 6px 20px var(--accent-settings-shadow);
   color: #233047;
   text-shadow: none;
@@ -2208,70 +1915,19 @@ app-root:not(.dark-mode) .compact-feedback-box {
   box-shadow: inset 0 1px 0 #fff, 0 14px 30px rgba(30, 41, 59, 0.07);
 }
 
-app-root:not(.dark-mode) .timeline-heading,
 app-root:not(.dark-mode) .summary-label {
   color: #526077;
   opacity: 1;
 }
 
-app-root:not(.dark-mode) .timeline-point strong,
 app-root:not(.dark-mode) .summary-value {
   color: #29364b;
 }
 
-app-root:not(.dark-mode) .timeline-point.main-point strong {
-  color: var(--accent-text);
-  text-shadow: none;
-}
-
-app-root:not(.dark-mode) .timeline-dot {
-  border-color: #8795aa;
-  background: #f8fafc;
-  box-shadow: 0 0 0 4px var(--accent-segment-bg);
-}
-
-app-root:not(.dark-mode) .timeline-dot.main-dot {
-  box-shadow: 0 0 0 5px var(--accent-segment-bg);
-}
-
-app-root:not(.dark-mode) .timeline-link {
-  background: #c1cbda;
-}
-
-app-root:not(.dark-mode) .milestone-timeline.early-reached .timeline-dot:first-child,
-app-root:not(.dark-mode) .milestone-timeline.standard-reached .timeline-dot.main-dot,
-app-root:not(.dark-mode) .milestone-timeline.late-reached .timeline-dot:last-child {
-  border-color: var(--accent-solid);
-  background: var(--accent-solid);
-  box-shadow: 0 0 0 5px var(--accent-control-bg-hover), 0 0 15px var(--accent-focus-ring);
-}
-
-app-root:not(.dark-mode) .milestone-timeline.early-reached .timeline-link:nth-child(2),
-app-root:not(.dark-mode) .milestone-timeline.standard-reached .timeline-link:nth-child(4) {
-  background: linear-gradient(90deg, var(--accent-solid), var(--accent-gradient-end));
-  box-shadow: 0 0 10px var(--accent-focus-ring-soft);
-}
-
 app-root:not(.dark-mode) .compact-detail {
-  border-color: rgba(148, 163, 184, 0.3);
-  background: rgba(255, 255, 255, 0.72);
-  color: #344156;
-}
-
-app-root:not(.dark-mode) .edit-button {
-  border-color: var(--accent-focus-ring-soft);
-  background: var(--accent-control-bg);
-  color: var(--accent-text);
-  box-shadow: none;
-}
-
-app-root:not(.dark-mode) .edit-button:hover {
-  border-color: var(--accent-solid);
-  background: var(--accent-control-bg-hover);
-}
-
-app-root:not(.dark-mode) .edit-button:focus-visible {
-  outline-color: var(--accent-solid);
+  border-color: var(--form-card-rim);
+  background: var(--control-glass);
+  color: var(--control-ink);
 }
 
 app-root:not(.dark-mode) .work-progress {
@@ -2289,107 +1945,767 @@ app-root:not(.dark-mode) .compact-feedback {
   color: #3c4960;
 }
 
-.timeline-heading {
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
+/* Self-hosted rounded numerals; see assets/fonts/OFL-Nunito.txt for the license. */
+@font-face {
+  font-family: 'Nunito Glass';
+  src: url('assets/fonts/Nunito-variable.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  unicode-range: U+0030-003A;
+}
+
+/* Flow-inspired palette shared by the cards and slider. */
+app-root {
+  --glass-cool: var(--accent-solid);
+  --glass-mid: color-mix(in srgb, var(--accent-solid) 62%, #242424);
+  --glass-hot: color-mix(in srgb, var(--accent-solid) 23%, #fff);
+  --glass-ink: color-mix(in srgb, var(--accent-solid) 14%, #0b0b0b);
+  --glass-label: color-mix(in srgb, var(--accent-solid) 25%, #efefef);
+  --control-surface: color-mix(in srgb, var(--accent-solid) 10%, #fafafa);
+  --control-base: color-mix(in srgb, var(--accent-solid) 19%, #f8f8f8);
+  --control-rim: color-mix(in srgb, var(--accent-solid) 58%, #dedede);
+  --control-shine: color-mix(in srgb, var(--accent-solid) 16%, #fff);
+  --control-reflection: color-mix(in srgb, var(--accent-solid) 30%, #fff);
+  --control-ink: color-mix(in srgb, var(--accent-text) 85%, #242424);
+  --control-glow: color-mix(in srgb, var(--accent-solid) 16%, transparent);
+  --control-glow-hover: color-mix(in srgb, var(--accent-solid) 36%, transparent);
+  --control-sheen-color: color-mix(in srgb, var(--accent-solid) 34%, #fff);
+  --control-glass: radial-gradient(ellipse 110% 85% at 50% -25%, var(--control-shine), transparent 80%), linear-gradient(180deg, var(--control-surface), var(--control-base) 70%, var(--control-surface));
+  --control-primary-glass: var(--control-glass);
+  --control-shadow: var(--control-primary-shadow);
+  --control-shadow-hover: var(--control-primary-shadow-hover);
+  --control-primary-shadow: inset 0 1px 2px color-mix(in srgb, var(--control-reflection) 22%, transparent), 0 4px 14px var(--control-glow);
+  --control-primary-shadow-hover: inset 0 1px 3px color-mix(in srgb, var(--control-reflection) 35%, transparent), 0 5px 22px var(--control-glow-hover);
+  --field-surface: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 5%, #fafafa), color-mix(in srgb, var(--accent-solid) 9%, #f6f6f6));
+  --field-placeholder: color-mix(in srgb, var(--accent-text) 20%, #616b78);
+  --form-card-surface: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 6%, #fafafa), color-mix(in srgb, var(--accent-solid) 10%, #f7f7f7));
+  --form-card-rim: color-mix(in srgb, var(--accent-solid) 24%, #e2e2e2);
+}
+
+app-root.dark-mode {
+  --glass-mid: color-mix(in srgb, var(--accent-solid) 52%, #101010);
+  --glass-hot: color-mix(in srgb, var(--accent-solid) 30%, #fff);
+  --control-surface: color-mix(in srgb, var(--accent-solid) 30%, #080d16);
+  --control-base: color-mix(in srgb, var(--accent-solid) 16%, #080d16);
+  --control-rim: color-mix(in srgb, var(--accent-solid) 76%, #90a3bd);
+  --control-shine: color-mix(in srgb, var(--accent-solid) 72%, #c4d6ed);
+  --control-reflection: color-mix(in srgb, var(--accent-solid) 72%, #d0e1f6);
+  --control-ink: color-mix(in srgb, var(--accent-solid) 35%, #f2f6ff);
+  --control-glow: color-mix(in srgb, var(--accent-solid) 22%, transparent);
+  --control-glow-hover: color-mix(in srgb, var(--accent-solid) 48%, transparent);
+  --field-surface: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 9%, #1c222c), color-mix(in srgb, var(--accent-solid) 6%, #161c26));
+  --field-placeholder: #aeb8c8;
+  --form-card-surface: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 12%, #151b25), color-mix(in srgb, var(--accent-solid) 7%, #111720));
+  --form-card-rim: color-mix(in srgb, var(--accent-solid) 35%, #29313e);
+}
+
+.summary-line.result-summary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.95rem;
+  container-type: inline-size;
+}
+
+app-root.dark-mode .highlight-card.compact-highlight {
+  background:
+    radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--glass-cool) 9%, transparent), transparent 54%),
+    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--glass-mid) 10%, transparent), transparent 56%),
+    linear-gradient(145deg, #0b1320, #08111d 64%, color-mix(in srgb, var(--glass-ink) 70%, #101926));
+  border: 1px solid color-mix(in srgb, var(--glass-cool) 60%, #293544);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--control-reflection) 20%, transparent), inset 0 -1px 5px var(--accent-row-bg), 0 24px 48px rgba(0, 0, 0, 0.24);
+}
+
+.compact-feedback { font-weight: 500; }
+
+/* Keep the dashboard still, including after the countdown reaches zero. */
+.compact-highlight .celebration { display: none; }
+.compact-highlight.complete::after { animation: none; opacity: 0; }
+
+.compact-toolbar .work-progress {
+  --accent-solid: var(--glass-cool);
+  --accent-gradient-end: var(--glass-hot);
+  --accent-input-shadow: color-mix(in srgb, var(--glass-cool) 28%, transparent);
+}
+
+.summary-item.result-time-card,
+app-root:not(.dark-mode) .summary-item.result-time-card {
+  --flow-ink: color-mix(in srgb, var(--accent-solid) 28%, #071322);
+  --flow-cool: var(--accent-solid);
+  --flow-glint: color-mix(in srgb, var(--accent-solid) 14%, #fff);
+  --flow-surface: color-mix(in srgb, var(--accent-solid) 11%, #f7faff);
+  --flow-rim: color-mix(in srgb, var(--accent-solid) 36%, #e8f3ff);
+  --flow-label: color-mix(in srgb, var(--accent-solid) 32%, #102132);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  gap: 0;
+  place-items: center;
+  min-height: clamp(7.5rem, 25.5cqi, 9.3rem);
+  padding: 0;
+  overflow: hidden;
+  transition: none;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: clamp(20px, 4.1cqi, 25px);
+  background:
+    linear-gradient(145deg, var(--flow-glint), var(--flow-surface) 52%, color-mix(in srgb, var(--flow-cool) 20%, #eef6ff));
+  box-shadow:
+    inset 2px 2px 5px rgba(255, 255, 255, 0.85),
+    inset -2px -3px 8px color-mix(in srgb, var(--flow-cool) 17%, transparent),
+    0 5px 20px color-mix(in srgb, var(--flow-ink) 12%, transparent);
+}
+
+app-root.dark-mode .summary-item.result-time-card {
+  --flow-ink: color-mix(in srgb, var(--accent-solid) 5%, #01040c);
+  --flow-cool: var(--accent-solid);
+  --flow-glint: color-mix(in srgb, var(--accent-solid) 25%, #f6fbff);
+  --flow-surface: var(--flow-ink);
+  --flow-rim: color-mix(in srgb, var(--accent-solid) 56%, #cee5ff);
+  --flow-label: color-mix(in srgb, var(--accent-solid) 22%, #e4f3ff);
+  border-color: color-mix(in srgb, var(--flow-rim) 72%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--flow-cool) 16%, var(--flow-ink)), var(--flow-surface) 52%, var(--flow-ink));
+  box-shadow:
+    inset 1px 1px 3px color-mix(in srgb, var(--flow-glint) 52%, transparent),
+    inset -1px -2px 4px color-mix(in srgb, var(--flow-cool) 28%, transparent),
+    0 5px 22px rgba(0, 0, 0, 0.2);
+}
+
+/* The polished card rim is static; only the liquid inside the cards moves. */
+.result-time-card::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--flow-glint), var(--flow-rim) 30%, var(--flow-glint) 62%, var(--flow-rim) 86%, var(--flow-glint));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.result-time-card::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 2px;
+  border-radius: inherit;
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.035), transparent 30%);
+  box-shadow: inset 2px 2px 7px color-mix(in srgb, var(--flow-glint) 48%, transparent), inset -2px -2px 7px color-mix(in srgb, var(--flow-cool) 24%, transparent);
+  pointer-events: none;
+}
+
+app-liquid-backdrop {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.liquid-flow-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.has-liquid-canvas .liquid-flow-canvas { opacity: 1; }
+.liquid-flow-fallback {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+/* Static organic ribbons retain a readable clock when GPU rendering is unavailable. */
+.liquid-flow-fallback::before,
+.liquid-flow-fallback::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+}
+.liquid-flow-fallback::before {
+  background: var(--flow-cool);
+  opacity: 0.23;
+  --ribbon-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 150' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M-30 30C90-15 135 24 235 51S360 63 445 23 560 10 640 34L640 61C540 19 494 46 424 69S319 101 222 75 98 7-30 65ZM-20 123C65 29 137 76 213 119S367 138 452 93 562 58 630 99L630 131C537 82 518 101 445 125S300 185 204 146 61 84-20 157Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: var(--ribbon-mask);
+  mask-image: var(--ribbon-mask);
+}
+.liquid-flow-fallback::after {
+  background: var(--flow-glint);
+  opacity: 0.76;
+  --ribbon-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 150' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M-30 30C90-15 135 24 235 51S360 63 445 23 560 10 640 34M-20 123C65 29 137 76 213 119S367 138 452 93 562 58 630 99M-20 158C70 90 121 114 204 146S358 169 445 125 537 82 630 131'/%3E%3C/g%3E%3C/svg%3E");
+  -webkit-mask-image: var(--ribbon-mask);
+  mask-image: var(--ribbon-mask);
+}
+.remaining-time-card .liquid-flow-fallback { transform: scaleY(-1); }
+.has-liquid-canvas .liquid-flow-fallback { display: none; }
+.result-time-label {
+  position: absolute;
+  z-index: 4;
+  top: clamp(0.9rem, 3.7cqi, 1.3rem);
+  left: clamp(1rem, 5cqi, 1.8rem);
+  color: var(--flow-label);
+  font-size: clamp(0.68rem, 2.75cqi, 0.98rem);
+  font-weight: 600;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.84);
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: none;
 }
 
-.milestone-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0.48rem;
-  min-width: 0;
-}
-
-.timeline-track {
-  display: grid;
-  grid-template-columns: 1rem minmax(0, 1fr) 1.35rem minmax(0, 1fr) 1rem;
-  align-items: center;
-  width: 70%;
-  margin: 0 auto;
-  min-height: 1.5rem;
-}
-
-.timeline-dot {
-  width: 0.7rem;
-  height: 0.7rem;
-  margin: auto;
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  border-radius: 50%;
-  background: #27314c;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
-  transition: background 0.45s ease, box-shadow 0.45s ease, transform 0.45s ease;
-}
-
-.timeline-dot.main-dot {
-  width: 1.12rem;
-  height: 1.12rem;
-  border-width: 2px;
-  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.11);
-}
-
-.timeline-link {
-  height: 3px;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.25);
-  transition: background 0.45s ease, box-shadow 0.45s ease;
-}
-
-.milestone-timeline.early-reached .timeline-dot:first-child,
-.milestone-timeline.standard-reached .timeline-dot.main-dot,
-.milestone-timeline.late-reached .timeline-dot:last-child {
-  background: #fff;
-  transform: scale(1.13);
-  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2), 0 0 19px 7px var(--accent-focus-ring);
-}
-
-.milestone-timeline.early-reached .timeline-link:nth-child(2),
-.milestone-timeline.standard-reached .timeline-link:nth-child(4) {
-  background: linear-gradient(90deg, #fff, var(--accent-gradient-end));
-  box-shadow: 0 0 12px 3px var(--accent-focus-ring);
-}
-
-.timeline-values {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  text-align: center;
-  min-width: 0;
-}
-
-.timeline-point {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
-.timeline-point strong {
-  font-size: clamp(0.78rem, 2.2vw, 1.1rem);
+.result-time-value {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: baseline;
+  z-index: 4;
+  padding: 0;
+  color: var(--flow-ink);
+  font-family: 'Nunito Glass', 'Segoe UI', sans-serif;
+  font-size: clamp(2.65rem, 20.5cqi, 7.1rem);
+  font-weight: 900;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
+  -webkit-text-stroke: 0.4px var(--flow-rim);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6), 0 2px 2px color-mix(in srgb, var(--flow-ink) 20%, transparent);
 }
 
-.timeline-point.main-point strong {
-  font-size: clamp(1.6rem, 5vw, 2.65rem);
-  text-shadow: 0 0 18px rgba(255, 255, 255, 0.42);
+.result-time-value .time-glyph { display: block; }
+.result-time-value .time-glyph:last-child { letter-spacing: 0; }
+.result-time-value .time-separator {
+  position: relative;
+  top: var(--time-colon-offset);
+  padding-inline: var(--time-colon-gap);
 }
 
-.remaining-timeline .timeline-point strong {
-  font-size: clamp(0.72rem, 2vw, 1rem);
+.remaining-time-card .result-time-value { font-size: clamp(1.8rem, 17cqi, 5.9rem); }
+app-root.dark-mode .result-time-label { color: var(--flow-label); text-shadow: 0 1px 3px rgba(0, 8, 15, 0.7); }
+app-root.dark-mode .result-time-value { color: var(--flow-glint); -webkit-text-stroke-color: var(--flow-rim); text-shadow: 0 1px 1px rgba(255, 255, 255, 0.15), 0 2px 3px var(--flow-ink); }
+
+.result-time-card.has-liquid-canvas .result-time-value,
+app-root.dark-mode .result-time-card.has-liquid-canvas .result-time-value {
+  color: transparent;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
 }
 
-.remaining-timeline .timeline-point.main-point strong {
-  font-size: clamp(1.26rem, 4.2vw, 2.15rem);
+.exit-slider {
+  --slider-thumb-size: 2.25rem;
+  --slider-hit-size: 2.75rem;
+  --slider-orb-size: 2.15rem;
+  --slider-surface: #f4f7fc;
+  --slider-track: color-mix(in srgb, var(--accent-solid) 9%, #d6dae2);
+  --slider-fill-start: color-mix(in srgb, var(--accent-solid) 85%, var(--control-base));
+  --slider-fill-end: color-mix(in srgb, var(--accent-solid) 65%, var(--control-surface));
+  display: grid;
+  grid-template-columns: var(--slider-hit-size) minmax(0, 1fr) var(--slider-hit-size);
+  align-items: start;
+  gap: clamp(0.25rem, 3.5cqi, 1.25rem);
+  padding: 0.1rem 0.1rem 0;
+  text-shadow: none;
 }
+
+app-root.dark-mode .exit-slider {
+  --slider-surface: var(--glass-ink);
+  --slider-track: var(--control-base);
+  --slider-fill-start: color-mix(in srgb, var(--accent-solid) 70%, var(--control-base));
+  --slider-fill-end: color-mix(in srgb, var(--accent-solid) 40%, var(--control-surface));
+}
+
+.offset-button {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: var(--slider-hit-size);
+  height: var(--slider-hit-size);
+  padding: 0;
+  border: 1px solid var(--form-card-rim);
+  border-radius: 50%;
+  background: var(--control-glass);
+  box-shadow: var(--control-shadow);
+  color: var(--control-ink);
+  cursor: pointer;
+  transition: opacity 160ms ease, box-shadow 180ms ease;
+}
+
+.offset-button svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: square; pointer-events: none; }
+.offset-button:disabled { opacity: 0.35; cursor: default; }
+.offset-button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.offset-control { position: relative; min-width: 0; height: 3.7rem; }
+.offset-scale { position: absolute; inset: 0 calc(var(--slider-thumb-size) / 2); pointer-events: none; }
+
+.offset-track {
+  position: absolute;
+  top: calc(var(--slider-hit-size) / 2 - 4px);
+  inset-inline: 0;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--control-rim) 65%, transparent);
+  border-radius: 999px;
+  background: var(--slider-track);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22), 0 1px 1px var(--control-glow);
+}
+
+.offset-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--slider-fill-start), var(--slider-fill-end)); box-shadow: inset 0 1px 1px color-mix(in srgb, var(--control-reflection) 35%, transparent); }
+
+.offset-orb {
+  position: absolute;
+  isolation: isolate;
+  top: calc(var(--slider-hit-size) / 2);
+  width: var(--slider-orb-size);
+  height: var(--slider-orb-size);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border: 1px solid var(--form-card-rim);
+  border-radius: 50%;
+  background: var(--control-glass);
+  box-shadow: var(--control-shadow);
+  transition: box-shadow 180ms ease;
+}
+
+.offset-orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 28% 12%, color-mix(in srgb, var(--control-reflection) 32%, transparent), transparent 42%);
+  box-shadow: inset 1px 1px 2px color-mix(in srgb, var(--control-reflection) 45%, transparent), inset -2px -2px 4px var(--control-base);
+}
+
+.offset-label { position: absolute; top: 2.7rem; transform: translateX(-50%); color: var(--accent-text); font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap; }
+app-root.dark-mode .offset-label { color: var(--glass-label); }
+
+.offset-range,
+.offset-range:focus {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--slider-hit-size);
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.offset-range::-webkit-slider-runnable-track { height: 8px; background: transparent; }
+.offset-range::-moz-range-track { height: 8px; background: transparent; }
+.offset-range::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: var(--slider-thumb-size); height: var(--slider-thumb-size); margin-top: calc(4px - var(--slider-thumb-size) / 2); border: 0; border-radius: 50%; background: transparent; }
+.offset-range::-moz-range-thumb { width: var(--slider-thumb-size); height: var(--slider-thumb-size); box-sizing: border-box; border: 0; border-radius: 50%; background: transparent; }
+.offset-control:has(.offset-range:focus-visible) .offset-orb { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+
+/* The monochrome choices retain separate bright and dark optical materials. */
+app-root.accent-black,
+app-root.dark-mode.accent-white {
+  --accent-control-bg: color-mix(in srgb, var(--accent-solid) 12%, transparent);
+  --accent-control-bg-hover: color-mix(in srgb, var(--accent-solid) 19%, transparent);
+  --accent-focus-ring: color-mix(in srgb, var(--accent-solid) 48%, transparent);
+  --accent-focus-ring-soft: color-mix(in srgb, var(--accent-solid) 34%, transparent);
+  --accent-input-inset: color-mix(in srgb, var(--accent-solid) 8%, transparent);
+  --accent-input-shadow: color-mix(in srgb, var(--accent-solid) 17%, transparent);
+  --accent-ghost-hover: var(--accent-control-bg);
+  --accent-row-bg: color-mix(in srgb, var(--accent-solid) 6%, transparent);
+  --accent-alt-row-bg: var(--accent-row-bg);
+  --accent-segment-bg: var(--accent-control-bg);
+  --accent-primary-shadow: var(--accent-input-shadow);
+  --accent-primary-shadow-hover: var(--accent-control-bg-hover);
+  --accent-save-shadow: var(--accent-input-shadow);
+  --accent-save-shadow-hover: var(--accent-control-bg-hover);
+  --accent-settings-shadow: color-mix(in srgb, var(--accent-solid) 12%, transparent);
+  --accent-sweep-primary: var(--accent-control-bg-hover);
+  --accent-sweep-secondary: var(--accent-control-bg);
+  --accent-dynamic-shadow: var(--accent-input-shadow);
+  --accent-dynamic-shadow-soft: var(--accent-row-bg);
+  --accent-button-border: var(--control-rim);
+  --accent-button-ambient: var(--accent-input-shadow);
+  --accent-button-background: linear-gradient(145deg, var(--control-shine), var(--control-surface));
+  --accent-highlight-background: radial-gradient(ellipse at 0% 0%, var(--accent-row-bg), transparent 52%), linear-gradient(145deg, var(--mono-surface), var(--mono-input));
+  --accent-highlight-border: 1px solid var(--control-rim);
+  --accent-highlight-shadow: inset 0 1px 1px var(--control-shine), 0 24px 48px rgba(0, 0, 0, 0.15);
+  --accent-highlight-text-shadow: none;
+  --accent-summary-border: 1px solid var(--control-rim);
+  --accent-sparkle-filter: drop-shadow(0 0 12px var(--accent-input-shadow));
+  --accent-comet-tail: transparent;
+  --accent-firework-glow: var(--accent-focus-ring);
+  --accent-toast-bg: #ededed;
+  --glass-ink: #101010;
+  --mono-text: #242424;
+  --mono-muted: #565656;
+  --mono-surface: #f6f6f6;
+  --mono-input: #f4f4f4;
+  --mono-border: #d0d0d0;
+  --field-placeholder: #747474;
+  background: radial-gradient(circle at top, #fafafa, #f0f0f0 48%, #e7e7e7);
+  color: var(--mono-text);
+}
+
+app-root.accent-black {
+  --accent-solid: #171717;
+  --accent-text: #171717;
+  --accent-gradient-start: #252525;
+  --accent-gradient-end: #a5a5a5;
+  --accent-save-gradient-end: #686868;
+}
+
+app-root.dark-mode.accent-white {
+  --accent-solid: #f4f4f4;
+  --accent-text: #f4f4f4;
+  --accent-gradient-start: #b6b6b6;
+  --accent-gradient-end: #fff;
+  --accent-save-gradient-end: #e5e5e5;
+  --glass-ink: #070707;
+  --mono-text: #efefef;
+  --mono-muted: #bdbdbd;
+  --mono-surface: #151515;
+  --mono-input: #222;
+  --mono-border: #474747;
+  --control-surface: #242424;
+  --control-base: #131313;
+  --control-rim: #a3a3a3;
+  --control-shine: #bdbdbd;
+  --control-reflection: #d6d6d6;
+  --control-ink: #efefef;
+  --field-surface: linear-gradient(145deg, #242424, #1b1b1b);
+  --field-placeholder: #b3b3b3;
+  --form-card-surface: linear-gradient(145deg, #202020, #171717);
+  --form-card-rim: #484848;
+  background: radial-gradient(circle at top, #202020, #101010 48%, #080808);
+}
+
+app-root.accent-black .summary-item.result-time-card {
+  --flow-ink: #121212;
+  --flow-cool: #333;
+  --flow-glint: #fff;
+  --flow-surface: #f0f0f0;
+  --flow-rim: #c9c9c9;
+  --flow-label: #252525;
+  background: linear-gradient(145deg, #fff, #e6e6e6);
+}
+
+app-root.dark-mode.accent-white .summary-item.result-time-card {
+  --flow-ink: #050505;
+  --flow-cool: #bcbcbc;
+  --flow-glint: #fff;
+  --flow-surface: #050505;
+  --flow-rim: #bdbdbd;
+  --flow-label: #e4e4e4;
+  background: linear-gradient(145deg, #191919, #050505);
+}
+
+app-root:is(.accent-black, .accent-white) .highlight-card,
+app-root:is(.accent-black, .accent-white) .highlight-card.compact-highlight {
+  background: radial-gradient(ellipse at 0% 0%, var(--accent-control-bg), transparent 54%), linear-gradient(145deg, var(--mono-surface), var(--mono-input));
+  border-color: var(--mono-border);
+  box-shadow: inset 0 1px 1px var(--control-shine), 0 24px 48px rgba(0, 0, 0, 0.2);
+  color: var(--mono-text);
+}
+
+app-root:is(.accent-black, .accent-white) .panel:not(.compact-panel),
+app-root:is(.accent-black, .accent-white) .config-dialog,
+app-root:is(.accent-black, .accent-white) .compact-feedback-box {
+  background: var(--mono-surface);
+  border-color: var(--mono-border);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 18px 42px rgba(0, 0, 0, 0.13);
+}
+
+app-root:is(.accent-black, .accent-white) :is(h1, h2, label, .config-label, .compact-feedback, .adjustment-title) { color: var(--mono-text); }
+app-root:is(.accent-black, .accent-white) :is(.field-hint, .theme-segment button:not(.active), .title-segment button:not(.active)) { color: var(--mono-muted); }
+app-root:is(.accent-black, .accent-white) .compact-detail { background: var(--control-glass); color: var(--control-ink); border-color: var(--form-card-rim); }
+app-root:is(.accent-black, .accent-white) input:not(.offset-range) { background: var(--mono-input); color: var(--mono-text); border-color: var(--mono-border); }
+
+/* Light fields need their own opaque surface and a visible edge inside tinted rows. */
+app-root:not(.dark-mode) {
+  --field-surface: linear-gradient(180deg, #fff, color-mix(in srgb, var(--accent-solid) 2%, #fff));
+  --field-rim: color-mix(in srgb, var(--accent-text) 25%, #82909f);
+  --field-placeholder: color-mix(in srgb, var(--accent-text) 20%, #526172);
+  --field-ink: #1f2933;
+  --remove-surface: linear-gradient(180deg, color-mix(in srgb, var(--accent-solid) 14%, #fff), color-mix(in srgb, var(--accent-solid) 26%, #f8fafc));
+  --remove-ink: color-mix(in srgb, var(--accent-text) 90%, #17212c);
+}
+
+app-root:not(.dark-mode) input:not(.offset-range) {
+  background: var(--field-surface);
+  color: var(--field-ink);
+}
+
+app-root:not(.dark-mode) input#start-time {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 5%, #fafafa), color-mix(in srgb, var(--accent-solid) 9%, #f6f6f6));
+}
+
+app-root.dark-mode .panel :is(.break-row, .adjustment-row) input {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 5%, #0d131c), color-mix(in srgb, var(--accent-solid) 3%, #090f17));
+}
+
+app-root.dark-mode .panel :is(.break-row, .adjustment-row) input:not(:focus) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-solid) 22%, #354152);
+}
+
+app-root.dark-mode.accent-white :is(.break-row, .adjustment-row) input {
+  background: linear-gradient(145deg, #151515, #0d0d0d);
+}
+
+app-root:not(.dark-mode) input:not(.offset-range):not(:focus) {
+  box-shadow: inset 0 0 0 1px var(--field-rim), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+app-root:not(.dark-mode) .remove-button,
+app-root:not(.dark-mode) .config-dialog .icon-button {
+  background: var(--remove-surface);
+  color: var(--remove-ink);
+  box-shadow: var(--control-shadow);
+}
+
+app-root:not(.dark-mode) .remove-button:not(:disabled):hover,
+app-root:not(.dark-mode) .config-dialog .icon-button:hover {
+  box-shadow: var(--control-shadow-hover);
+}
+
+/* Settings use the selected surface rather than borders to indicate state. */
+app-root .config-dialog :is(.icon-button, .accent-swatch, .favorite-hour-option) {
+  border: 0;
+}
+
+app-root:not(.dark-mode) .config-dialog :is(.theme-segment, .title-segment) button {
+  background: #f1f3f6;
+  color: #475569;
+}
+
+app-root:not(.dark-mode) .config-dialog :is(.theme-segment, .title-segment) button.active {
+  background:
+    radial-gradient(ellipse 110% 85% at 50% -25%, color-mix(in srgb, var(--accent-solid) 10%, #fff), transparent 80%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-solid) 18%, #fff), color-mix(in srgb, var(--accent-solid) 33%, #f5f7fa) 70%, color-mix(in srgb, var(--accent-solid) 23%, #fff));
+  color: color-mix(in srgb, var(--control-ink) 80%, #242424);
+  box-shadow: var(--control-shadow);
+}
+
+app-root .config-dialog button.active {
+  cursor: default;
+}
+
+/* A single, soft rim keeps the light result controls distinct without a double outline. */
+app-root:not(.dark-mode) .compact-highlight {
+  --result-control-rim: color-mix(in srgb, var(--accent-solid) 38%, #dedede);
+}
+
+app-root:not(.dark-mode) .compact-highlight :is(.edit-button, .compact-detail, .offset-button, .offset-orb) {
+  border-color: var(--result-control-rim);
+}
+
+app-root:not(.dark-mode) .compact-highlight .compact-feedback-box {
+  border-color: color-mix(in srgb, var(--accent-solid) 20%, #e2e2e2);
+}
+
+app-root:is(.accent-black, .accent-white) .dialog-backdrop { background: rgba(0, 0, 0, 0.42); }
+app-root:is(.accent-black, .accent-white) .toast { background: var(--mono-text); color: var(--mono-surface); }
+app-root:is(.accent-black, .accent-white) .exit-slider { --slider-surface: var(--mono-surface); --slider-track: var(--mono-border); }
+app-root:is(.accent-black, .accent-white) .work-progress { --progress-center: var(--mono-surface); --progress-track: var(--mono-border); color: var(--mono-text); }
+app-root:is(.accent-black, .accent-white) .work-progress span { box-shadow: inset 0 0 0 1px var(--mono-border); }
+
+@media (hover: hover) and (pointer: fine) {
+  .offset-button:not(:disabled):hover {
+    box-shadow: var(--control-shadow-hover);
+  }
+  .offset-control:has(.offset-range:hover) .offset-orb {
+    box-shadow: var(--control-shadow-hover);
+  }
+}
+
+/* The extra layer clips the light, while button tooltips keep their own pseudos. */
+app-root button { position: relative; }
+app-root .button-ripple-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+app-root .button-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+app-root button > .button-sheen {
+  --button-sweep-duration: 900ms;
+  position: absolute;
+  inset: 1px;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+app-root button > .button-sheen::before {
+  content: "";
+  position: absolute;
+  inset: -20% 0;
+  z-index: 1;
+  background: linear-gradient(110deg, transparent 28%, color-mix(in srgb, var(--control-sheen-color) 12%, transparent) 40%, color-mix(in srgb, var(--control-sheen-color) 65%, transparent) 50%, color-mix(in srgb, var(--control-sheen-color) 18%, transparent) 60%, transparent 72%);
+  opacity: 0;
+  transform: translateX(-110%);
+}
+app-root button > .button-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--control-shine) 18%, transparent);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+app-root .primary-button > .button-sheen { --button-sweep-duration: 1100ms; }
+
+/* In the light theme a persistent tint makes hover visible after the sheen passes. */
+app-root:not(.dark-mode) button > .button-sheen::after,
+app-root:not(.dark-mode) .offset-orb::before {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+app-root:not(.dark-mode) .offset-orb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+app-root:not(.dark-mode) button:not(:disabled):not(.active):focus-visible > .button-sheen::after,
+app-root:not(.dark-mode) .offset-control:has(.offset-range:focus-visible) .offset-orb::before {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  app-root button:not(:disabled):not(.active):hover > .button-sheen::after {
+    opacity: 1;
+  }
+  app-root:not(.dark-mode) .offset-control:has(.offset-range:hover) .offset-orb::before {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  app-root button:not(:disabled):not(.active):focus-visible > .button-sheen::before {
+    animation: buttonSheen var(--button-sweep-duration) cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  app-root button:not(:disabled):not(.active):hover > .button-sheen::before,
+  app-root button:not(:disabled):not(.active):focus-visible > .button-sheen::before {
+    animation: buttonSheen var(--button-sweep-duration) cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+}
+@keyframes buttonSheen {
+  0% { opacity: 0; transform: translateX(-110%); }
+  12% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(110%); }
+}
+
+/* Placeholder differs in weight and shape as well as colour from an entered time. */
+app-root #start-time::placeholder {
+  font-size: 0.94rem;
+  font-weight: 400;
+  font-style: italic;
+  opacity: 1;
+  color: color-mix(in srgb, var(--field-placeholder) 95%, #fff);
+}
+app-root.dark-mode #start-time::placeholder {
+  color: color-mix(in srgb, var(--field-placeholder) 80%, #15202c);
+}
+
+/* Departing surfaces are inert visual copies; the prepared result stays off screen. */
+.result-block.result-cache {
+  position: fixed;
+  top: 0;
+  left: -200vw;
+  width: min(600px, calc(100vw - clamp(3rem, 10vw, 8rem)));
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout paint;
+}
+.result-cache * {
+  animation: none !important;
+  transition: none !important;
+}
+app-root .view-morph-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+}
+app-root .panel.view-morph-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow: visible;
+}
+app-root .view-morph-overlay * {
+  animation: none !important;
+  transition: none !important;
+  pointer-events: none !important;
+}
+
+.offset-button:not(:disabled):active { box-shadow: inset 0 2px 7px var(--accent-control-bg); }
+
+@media (prefers-reduced-motion: reduce) {
+  app-root .offset-button, app-root .offset-orb, app-root .edit-button, app-root .accent-swatch, app-root .favorite-hour-option { transition: none; }
+  app-root button > .button-sheen::after,
+  app-root .offset-orb::before { transition: none; }
+}
+
+/* Disabling Flow removes its canvas; the same clocks use a quiet, opaque surface. */
+app-root.simple-time-cards .summary-item.result-time-card {
+  border: 1px solid var(--form-card-rim);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 7%, #fff), color-mix(in srgb, var(--accent-solid) 13%, #f8fafc));
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--accent-solid) 8%, transparent);
+}
+app-root.dark-mode.simple-time-cards .summary-item.result-time-card {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 12%, #08101a), color-mix(in srgb, var(--accent-solid) 6%, #0c1420));
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+}
+app-root.accent-black.simple-time-cards .summary-item.result-time-card { background: linear-gradient(145deg, #fff, #e9e9e9); }
+app-root.dark-mode.accent-white.simple-time-cards .summary-item.result-time-card { background: linear-gradient(145deg, #202020, #141414); }
+app-root.simple-time-cards .result-time-card::before,
+app-root.simple-time-cards .result-time-card::after {
+  display: none;
+}
+app-root.simple-time-cards .result-time-value {
+  color: color-mix(in srgb, color-mix(in srgb, var(--control-ink) 88%, #242424) 90%, transparent);
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+}
+app-root.dark-mode.simple-time-cards .result-time-value { color: color-mix(in srgb, var(--control-ink) 90%, transparent); }
+app-root.simple-time-cards .result-time-label { text-shadow: none; }
+app-root.simple-time-cards .work-progress.in-progress::before { animation: none; }
 
 @media (max-width: 430px) {
+  app-root .accent-picker {
+    --config-circle-size: clamp(34px, 10vw, 40px);
+    --config-circle-gap: clamp(5px, 2vw, 8px);
+  }
   .compact-toolbar {
     flex-wrap: wrap;
   }
@@ -2398,24 +2714,5 @@ app-root:not(.dark-mode) .compact-feedback {
     margin-left: auto;
   }
 
-  .timeline-item {
-    padding-inline: 0.7rem;
-  }
-
-  .timeline-point strong {
-    font-size: 0.82rem;
-  }
-
-  .timeline-point.main-point strong {
-    font-size: 1.55rem;
-  }
-
-  .remaining-timeline .timeline-point strong {
-    font-size: 0.69rem;
-  }
-
-  .remaining-timeline .timeline-point.main-point strong {
-    font-size: 1.05rem;
-  }
 }
 

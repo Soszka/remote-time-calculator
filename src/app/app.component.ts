@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostBinding, OnDestroy, effect, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, NgZone, OnDestroy, computed, effect, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -11,6 +11,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
+import { LiquidBackdropComponent } from './liquid-backdrop.component';
+import { ButtonRippleDirective } from './button-ripple.directive';
+import { TimeValueComponent } from './time-value.component';
+import { VIEW_MORPH_MS, ViewMorph, ViewMorphSnapshot } from './view-morph';
+import { PANEL_MOTION, PanelMotionDirective } from './panel-motion.directive';
 interface BreakFormGroup extends FormGroup<{
   start: FormControl<string | null>;
   end: FormControl<string | null>;
@@ -24,23 +29,16 @@ interface DurationFormGroup extends FormGroup<{
 type ResultState = 'beforeStart' | 'inProgress' | 'complete';
 type AdjustmentKind = 'overtimePickup' | 'undertimeMakeup';
 type ThemeMode = 'light' | 'dark';
-type AccentColor = 'violet' | 'green' | 'red' | 'pink' | 'yellow';
+type AccentColor = 'violet' | 'green' | 'red' | 'pink' | 'yellow' | 'black' | 'white';
+type AccentSelection = Exclude<AccentColor, 'black' | 'white'> | 'monochrome';
 type FavoriteHour = 6 | 7 | 8 | null;
 type TabDisplayMode = 'endTime' | 'remainingTime';
-type CardDisplayMode = 'timeline' | 'standard';
 
 interface ResultPayload {
   endTime: string;
-  earlyEndTime: string;
-  lateEndTime: string;
   remainingLabel: string;
   remainingClockLabel: string;
-  earlyRemainingLabel: string;
-  lateRemainingLabel: string;
   remainingTitleLabel: string;
-  reachedEarly: boolean;
-  reachedStandard: boolean;
-  reachedLate: boolean;
   progressPercent: number;
   message: string;
   state: ResultState;
@@ -53,9 +51,9 @@ interface AppSettings {
   theme: ThemeMode;
   favoriteHour: FavoriteHour;
   tabDisplayMode: TabDisplayMode;
-  endTimeDisplayMode: CardDisplayMode;
-  remainingTimeDisplayMode: CardDisplayMode;
-  accentByTheme: Record<ThemeMode, AccentColor>;
+  sliderEnabled: boolean;
+  animationsEnabled: boolean;
+  accentColor: AccentSelection;
 }
 
 interface BreakSnapshot {
@@ -70,6 +68,7 @@ interface DurationSnapshot {
 
 interface DailyPlanSnapshot {
   date: string;
+  exitOffsetMinutes: number;
   startTime: string;
   breaks: BreakSnapshot[];
   overtimePickup: DurationSnapshot;
@@ -80,13 +79,13 @@ interface DailyPlanSnapshot {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LiquidBackdropComponent, ButtonRippleDirective, TimeValueComponent, PanelMotionDirective],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
-export class AppComponent implements OnDestroy {
+export class AppComponent implements AfterViewInit, OnDestroy {
   private readonly baseMinutes = 8 * 60 + 15;
-  private readonly flexMinutes = 15;
+  readonly flexMinutes = 15;
   private readonly minStartMinutes = 5 * 60 + 30;
   private readonly maxEndMinutes = 21 * 60;
   private readonly timePattern = /^([01]?\d|2[0-3])([:\.])([0-5]\d)$/;
@@ -94,27 +93,32 @@ export class AppComponent implements OnDestroy {
   private readonly startTimeStorageKey = 'workEndCalculator.startTime';
   private readonly dailyPlanStorageKey = 'workEndCalculator.dailyPlan';
   private readonly defaultDocumentTitle = 'Kalkulator końca pracy';
-  private readonly dynamicCardExitMs = 320;
+  private readonly dynamicCardExitMs = PANEL_MOTION.remove;
   private readonly dynamicCardHighlightMs = 860;
   private readonly defaultSettings: AppSettings = {
-    theme: 'light',
+    theme: 'dark',
     favoriteHour: null,
     tabDisplayMode: 'endTime',
-    endTimeDisplayMode: 'timeline',
-    remainingTimeDisplayMode: 'timeline',
-    accentByTheme: {
-      light: 'violet',
-      dark: 'green',
-    },
+    sliderEnabled: true,
+    animationsEnabled: true,
+    accentColor: 'violet',
   };
 
-  readonly accentOptions: { value: AccentColor; label: string }[] = [
+  private readonly colorAccentOptions: { value: AccentColor; label: string }[] = [
     { value: 'violet', label: 'Niebiesko-fioletowy' },
     { value: 'green', label: 'Zielony' },
     { value: 'red', label: 'Czerwony' },
     { value: 'pink', label: 'Różowy' },
     { value: 'yellow', label: 'Żółty' },
   ];
+  private readonly accentOptionsByTheme = {
+    light: [...this.colorAccentOptions, { value: 'black' as AccentColor, label: 'Czarny' }],
+    dark: [...this.colorAccentOptions, { value: 'white' as AccentColor, label: 'Biały' }],
+  };
+
+  get accentOptions(): { value: AccentColor; label: string }[] {
+    return this.accentOptionsByTheme[this.settings().theme];
+  }
   readonly favoriteHourOptions: {
     value: FavoriteHour;
     label: string;
@@ -446,12 +450,8 @@ export class AppComponent implements OnDestroy {
     tabDisplayMode: this.fb.control<TabDisplayMode>('endTime', {
       nonNullable: true,
     }),
-    endTimeDisplayMode: this.fb.control<CardDisplayMode>('timeline', {
-      nonNullable: true,
-    }),
-    remainingTimeDisplayMode: this.fb.control<CardDisplayMode>('timeline', {
-      nonNullable: true,
-    }),
+    sliderEnabled: this.fb.control(true, { nonNullable: true }),
+    animationsEnabled: this.fb.control(true, { nonNullable: true }),
     favoriteHour: this.fb.control<FavoriteHour>(
       null,
       this.favoriteHourValidatorFn,
@@ -459,12 +459,33 @@ export class AppComponent implements OnDestroy {
   });
 
   readonly result = signal<ResultPayload | null>(null);
+  private readonly surfacePrepared = signal(false);
+  // Only used by the invisible, inert GPU preparation surface. Never saved as a plan.
+  readonly resultSurface = computed<ResultPayload | null>(() => this.result() ?? (this.surfacePrepared() ? {
+    endTime: '16:15', remainingLabel: '', remainingClockLabel: '08:15:00',
+    remainingTitleLabel: '', progressPercent: 0, message: '', state: 'beforeStart',
+    startTime: '', adjustmentLabel: null, breaksLabel: null,
+  } : null));
+  readonly exitOffsetMinutes = signal(0);
+  readonly exitOffsetPercent = computed(() =>
+    ((this.exitOffsetMinutes() + this.flexMinutes) / (2 * this.flexMinutes)) * 100,
+  );
+  readonly exitOffsetLabel = computed(() => {
+    const offset = this.exitOffsetMinutes();
+    return offset === 0 ? '' : `${offset > 0 ? '+' : ''}${offset} min`;
+  });
   readonly scheduleError = signal<string | null>(null);
   readonly isConfigOpen = signal(false);
   readonly isCompactMode = signal(false);
   readonly isSwitchingToResult = signal(false);
+  readonly isSwitchingToForm = signal(false);
+  readonly isResultRevealing = signal(false);
   readonly toastMessage = signal<string | null>(null);
   readonly settings = signal<AppSettings>(this.defaultSettings);
+  readonly showExitSlider = computed(() =>
+    this.isCompactMode() &&
+    this.settings().sliderEnabled,
+  );
   readonly removingBreaks = signal<ReadonlySet<BreakFormGroup>>(
     new Set<BreakFormGroup>(),
   );
@@ -487,21 +508,28 @@ export class AppComponent implements OnDestroy {
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
   private resultTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
+  private readonly viewMorph: ViewMorph;
+  private warmupIdle: number | null = null;
+  private warmupTimeout: ReturnType<typeof setTimeout> | null = null;
   private dynamicCardTimeouts: ReturnType<typeof setTimeout>[] = [];
   private dynamicCardHighlightTimeouts: ReturnType<typeof setTimeout>[] = [];
-  private countdownTargetSeconds: number | null = null;
+  private countdownBaseTargetSeconds: number | null = null;
   private countdownStartSeconds: number | null = null;
   private countdownDateKey: string | null = null;
   private messageContext: {
     dayName: string;
     startLabel: string;
-    endLabel: string;
+    template: string;
   } | null = null;
 
   constructor(
     private readonly fb: FormBuilder,
     private readonly title: Title,
+    element: ElementRef<HTMLElement>,
+    private readonly changeDetector: ChangeDetectorRef,
+    private readonly zone: NgZone,
   ) {
+    this.viewMorph = new ViewMorph(element.nativeElement);
     const settings = this.loadSettings();
     this.settings.set(settings);
     this.configForm.patchValue(
@@ -509,8 +537,8 @@ export class AppComponent implements OnDestroy {
         darkMode: settings.theme === 'dark',
         accentColor: this.getActiveAccent(settings),
         tabDisplayMode: settings.tabDisplayMode,
-        endTimeDisplayMode: settings.endTimeDisplayMode,
-        remainingTimeDisplayMode: settings.remainingTimeDisplayMode,
+        sliderEnabled: settings.sliderEnabled,
+        animationsEnabled: settings.animationsEnabled,
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -543,11 +571,11 @@ export class AppComponent implements OnDestroy {
     this.configForm.controls.tabDisplayMode.valueChanges.subscribe(
       (tabDisplayMode) => this.syncTabDisplayModeFromConfig(tabDisplayMode),
     );
-    this.configForm.controls.endTimeDisplayMode.valueChanges.subscribe((mode) =>
-      this.syncCardDisplayModeFromConfig('endTimeDisplayMode', mode),
+    this.configForm.controls.sliderEnabled.valueChanges.subscribe((enabled) =>
+      this.syncVisualPreferenceFromConfig('sliderEnabled', enabled),
     );
-    this.configForm.controls.remainingTimeDisplayMode.valueChanges.subscribe((mode) =>
-      this.syncCardDisplayModeFromConfig('remainingTimeDisplayMode', mode),
+    this.configForm.controls.animationsEnabled.valueChanges.subscribe((enabled) =>
+      this.syncVisualPreferenceFromConfig('animationsEnabled', enabled),
     );
 
     effect(() => {
@@ -556,12 +584,18 @@ export class AppComponent implements OnDestroy {
 
     if (savedDailyPlan) {
       this.calculate(false);
+      this.setExitOffset(savedDailyPlan.exitOffsetMinutes);
     }
   }
 
   @HostBinding('class.dark-mode')
   get darkModeClass(): boolean {
     return this.settings().theme === 'dark';
+  }
+
+  @HostBinding('class.simple-time-cards')
+  get simpleTimeCardsClass(): boolean {
+    return !this.settings().animationsEnabled;
   }
 
   @HostBinding('class.accent-violet')
@@ -589,10 +623,43 @@ export class AppComponent implements OnDestroy {
     return this.getActiveAccent(this.settings()) === 'yellow';
   }
 
+  @HostBinding('class.accent-black')
+  get accentBlackClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'black';
+  }
+
+  @HostBinding('class.accent-white')
+  get accentWhiteClass(): boolean {
+    return this.getActiveAccent(this.settings()) === 'white';
+  }
+
+  ngAfterViewInit(): void {
+    // Compile the two GPU programs between interactions, not in the first click.
+    this.zone.runOutsideAngular(() => {
+      const prepare = (): void => {
+        this.warmupIdle = null;
+        this.warmupTimeout = null;
+        if (this.result() || !this.settings().animationsEnabled || document.hidden) return;
+        this.zone.run(() => {
+          this.surfacePrepared.set(true);
+          this.changeDetector.detectChanges();
+        });
+      };
+      if (typeof window.requestIdleCallback === 'function') {
+        this.warmupIdle = window.requestIdleCallback(prepare, { timeout: 1500 });
+      } else {
+        this.warmupTimeout = setTimeout(prepare, 200);
+      }
+    });
+  }
+
   ngOnDestroy(): void {
+    if (this.warmupIdle !== null) window.cancelIdleCallback(this.warmupIdle);
+    if (this.warmupTimeout !== null) clearTimeout(this.warmupTimeout);
     this.clearCountdown();
     this.clearToast();
     this.clearResultTransition();
+    this.viewMorph.dispose();
     this.clearDynamicCardTimeouts();
     this.clearDynamicCardHighlightTimeouts();
   }
@@ -616,8 +683,8 @@ export class AppComponent implements OnDestroy {
         darkMode: settings.theme === 'dark',
         accentColor: this.getActiveAccent(settings),
         tabDisplayMode: settings.tabDisplayMode,
-        endTimeDisplayMode: settings.endTimeDisplayMode,
-        remainingTimeDisplayMode: settings.remainingTimeDisplayMode,
+        sliderEnabled: settings.sliderEnabled,
+        animationsEnabled: settings.animationsEnabled,
         favoriteHour: settings.favoriteHour,
       },
       { emitEvent: false },
@@ -676,8 +743,12 @@ export class AppComponent implements OnDestroy {
     return this.settings().tabDisplayMode === tabDisplayMode;
   }
 
-  setCardDisplayMode(kind: 'endTimeDisplayMode' | 'remainingTimeDisplayMode', mode: CardDisplayMode): void {
-    this.configForm.controls[kind].setValue(mode);
+  setSliderEnabled(enabled: boolean): void {
+    this.configForm.controls.sliderEnabled.setValue(enabled);
+  }
+
+  setAnimationsEnabled(enabled: boolean): void {
+    this.configForm.controls.animationsEnabled.setValue(enabled);
   }
 
   addBreak(): void {
@@ -751,9 +822,37 @@ export class AppComponent implements OnDestroy {
     });
   }
 
-  editPlan(): void {
+  editPlan(useTransition = true): void {
+    if (useTransition && this.isSwitchingToForm()) return;
+    const animate = useTransition && this.isCompactMode() && !this.prefersReducedMotion();
+    const snapshot = animate ? this.viewMorph.capture('result') : null;
     this.clearResultTransition();
     this.isCompactMode.set(false);
+    if (animate) this.startViewMorph(snapshot, 'form');
+  }
+
+  onExitOffsetInput(event: Event): void {
+    this.setExitOffset(Number((event.target as HTMLInputElement).value));
+  }
+
+  adjustExitOffset(delta: number): void {
+    this.setExitOffset(this.exitOffsetMinutes() + delta);
+  }
+
+  setExitOffset(value: number): void {
+    if (!this.isCompactMode() || this.countdownBaseTargetSeconds === null) {
+      return;
+    }
+
+    const offset = this.normalizeExitOffset(value);
+    if (offset === this.exitOffsetMinutes()) {
+      return;
+    }
+
+    this.exitOffsetMinutes.set(offset);
+    this.updateCountdown(true);
+    this.saveDailyPlan();
+    this.startCountdown();
   }
 
   isAdjustmentVisible(kind: AdjustmentKind): boolean {
@@ -766,6 +865,10 @@ export class AppComponent implements OnDestroy {
 
   isBreakRemoving(group: BreakFormGroup): boolean {
     return this.removingBreaks().has(group);
+  }
+
+  isBreakGroupRemoving(): boolean {
+    return this.breaks.length > 0 && this.breaks.controls.every(group => this.isBreakRemoving(group));
   }
 
   isBreakHighlighted(group: BreakFormGroup): boolean {
@@ -786,7 +889,10 @@ export class AppComponent implements OnDestroy {
   }
 
   get canCalculate(): boolean {
-    if (this.form.invalid) {
+    // Closing cards retain their controls until the visual fold finishes.
+    // Do not calculate or persist values the user has already chosen to remove.
+    if (this.form.invalid || this.removingBreaks().size > 0 ||
+        this.isAdjustmentRemoving('overtimePickup') || this.isAdjustmentRemoving('undertimeMakeup')) {
       return false;
     }
 
@@ -796,18 +902,22 @@ export class AppComponent implements OnDestroy {
   }
 
   calculate(useTransition = true): void {
+    if (useTransition && this.isSwitchingToResult()) return;
     if (!this.canCalculate) {
       this.form.markAllAsTouched();
       this.breaks.controls.forEach((group) => group.markAllAsTouched());
       return;
     }
 
+    const animate = useTransition && !this.isCompactMode() && !this.prefersReducedMotion();
+    const snapshot = animate ? this.viewMorph.capture('form') : null;
     this.clearDynamicCardHighlights();
     this.clearResultTransition();
     this.clearCountdown();
-    this.countdownTargetSeconds = null;
+    this.countdownBaseTargetSeconds = null;
     this.countdownStartSeconds = null;
     this.messageContext = null;
+    this.exitOffsetMinutes.set(0);
 
     const startValue = this.form.controls.startTime.value as string;
     const startMinutes = this.parseTime(startValue);
@@ -856,27 +966,14 @@ export class AppComponent implements OnDestroy {
     const remainingLabel = this.formatRemainingLabel(diffSeconds);
     const remainingForMessage = this.formatRemainingMessage(diffSeconds);
     const dayName = this.dayNames[now.getDay()];
-    const message = this.pickMessage(
-      dayName,
-      remainingForMessage,
-      diffMinutes,
-      state,
-      startLabel,
-      endTimeLabel,
-    );
+    const template = this.pickMessageTemplate(dayName, diffMinutes, state);
+    const message = this.formatTemplate(template, dayName, remainingForMessage, startLabel, endTimeLabel);
 
     const nextResult: ResultPayload = {
       endTime: endTimeLabel,
-      earlyEndTime: this.formatMinutes(totalMinutes - this.flexMinutes),
-      lateEndTime: this.formatMinutes(totalMinutes + this.flexMinutes),
       remainingLabel,
       remainingClockLabel: this.formatRemainingClock(diffSeconds),
-      earlyRemainingLabel: this.formatRoundedRemaining(targetSecondsTotal - this.flexMinutes * 60 - nowSecondsTotal),
-      lateRemainingLabel: this.formatRoundedRemaining(targetSecondsTotal + this.flexMinutes * 60 - nowSecondsTotal),
       remainingTitleLabel: remainingForMessage,
-      reachedEarly: nowSecondsTotal >= targetSecondsTotal - this.flexMinutes * 60,
-      reachedStandard: workFinished,
-      reachedLate: nowSecondsTotal >= targetSecondsTotal + this.flexMinutes * 60,
       progressPercent: this.calculateProgress(startSecondsTotal, targetSecondsTotal, nowSecondsTotal),
       message,
       state,
@@ -887,7 +984,7 @@ export class AppComponent implements OnDestroy {
     const nextMessageContext = {
       dayName,
       startLabel,
-      endLabel: endTimeLabel,
+      template,
     };
     const showResult = () => {
       this.result.set(nextResult);
@@ -898,23 +995,14 @@ export class AppComponent implements OnDestroy {
       this.messageContext = nextMessageContext;
       this.saveDailyPlan();
 
-      if (nextResult.reachedLate) {
-        return;
-      }
-
-      this.countdownTargetSeconds = targetSecondsTotal;
+      this.countdownBaseTargetSeconds = targetSecondsTotal;
       this.countdownStartSeconds = startSecondsTotal;
       this.countdownDateKey = this.getTodayKey(now);
       this.startCountdown();
     };
 
-    if (useTransition && !this.isCompactMode()) {
-      this.isSwitchingToResult.set(true);
-      this.resultTransitionTimeout = setTimeout(showResult, 220);
-      return;
-    }
-
     showResult();
+    if (animate) this.startViewMorph(snapshot, 'result');
   }
 
   trackByIndex(_index: number, _item: unknown): number {
@@ -1042,12 +1130,28 @@ export class AppComponent implements OnDestroy {
     return hours * 60 + minutes;
   }
 
-  private getStorage(): Storage | null {
-    if (typeof localStorage === 'undefined') {
+  private readStorage(key: string): string | null {
+    try {
+      return typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
+    } catch {
       return null;
     }
+  }
 
-    return localStorage;
+  private writeStorage(key: string, value: string): void {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+    } catch {
+      // Saving is optional: blocked storage or a full quota must not stop work.
+    }
+  }
+
+  private removeStorage(key: string): void {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+    } catch {
+      // Browsers may also block removal of previously saved data.
+    }
   }
 
   private getTodayKey(today = new Date()): string {
@@ -1057,12 +1161,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private loadDailyPlan(): DailyPlanSnapshot | null {
-    const storage = this.getStorage();
-    if (!storage) {
-      return null;
-    }
-
-    const rawPlan = storage.getItem(this.dailyPlanStorageKey);
+    const rawPlan = this.readStorage(this.dailyPlanStorageKey);
     if (!rawPlan) {
       return null;
     }
@@ -1070,46 +1169,29 @@ export class AppComponent implements OnDestroy {
     try {
       const snapshot = this.normalizeDailyPlanSnapshot(JSON.parse(rawPlan));
       if (!snapshot) {
-        storage.removeItem(this.dailyPlanStorageKey);
+        this.removeStorage(this.dailyPlanStorageKey);
         return null;
       }
 
       if (snapshot.date !== this.getTodayKey()) {
-        storage.removeItem(this.dailyPlanStorageKey);
-        storage.removeItem(this.startTimeStorageKey);
+        this.removeStorage(this.dailyPlanStorageKey);
+        this.removeStorage(this.startTimeStorageKey);
         return null;
       }
 
       return snapshot;
     } catch {
-      storage.removeItem(this.dailyPlanStorageKey);
+      this.removeStorage(this.dailyPlanStorageKey);
       return null;
     }
   }
 
   private saveDailyPlan(): void {
-    const storage = this.getStorage();
-    if (!storage) {
-      return;
-    }
-
-    try {
-      storage.setItem(
-        this.dailyPlanStorageKey,
-        JSON.stringify(this.createDailyPlanSnapshot()),
-      );
-    } catch {
-      return;
-    }
+    this.writeStorage(this.dailyPlanStorageKey, JSON.stringify(this.createDailyPlanSnapshot()));
   }
 
   private clearDailyPlan(): void {
-    const storage = this.getStorage();
-    if (!storage) {
-      return;
-    }
-
-    storage.removeItem(this.dailyPlanStorageKey);
+    this.removeStorage(this.dailyPlanStorageKey);
   }
 
   private restoreDailyPlan(snapshot: DailyPlanSnapshot): void {
@@ -1143,6 +1225,7 @@ export class AppComponent implements OnDestroy {
 
     return {
       date: this.getTodayKey(),
+      exitOffsetMinutes: this.exitOffsetMinutes(),
       startTime:
         this.normalizeTimeValue(this.form.controls.startTime.value) ?? '',
       breaks: filledBreaks,
@@ -1190,6 +1273,7 @@ export class AppComponent implements OnDestroy {
 
     return {
       date,
+      exitOffsetMinutes: this.normalizeExitOffset(value['exitOffsetMinutes']),
       startTime,
       breaks,
       overtimePickup: this.normalizeDurationSnapshot(value['overtimePickup']),
@@ -1286,28 +1370,34 @@ export class AppComponent implements OnDestroy {
   }
 
   private loadSettings(): AppSettings {
-    const storage = this.getStorage();
-    if (!storage) {
-      return this.defaultSettings;
-    }
-
     try {
-      const rawSettings = storage.getItem(this.settingsStorageKey);
+      const rawSettings = this.readStorage(this.settingsStorageKey);
       if (!rawSettings) {
         return this.defaultSettings;
       }
 
-      const parsedSettings = JSON.parse(rawSettings) as Partial<AppSettings>;
+      const parsedSettings = JSON.parse(rawSettings) as Partial<AppSettings> & {
+        endTimeDisplayMode?: unknown;
+        remainingTimeDisplayMode?: unknown;
+        accentByTheme?: unknown;
+      };
+      const theme = parsedSettings.theme === 'dark' || parsedSettings.theme === 'light'
+        ? parsedSettings.theme : this.defaultSettings.theme;
       return {
-        theme: parsedSettings.theme === 'dark' ? 'dark' : 'light',
+        theme,
         favoriteHour: this.normalizeFavoriteHour(parsedSettings.favoriteHour),
         tabDisplayMode: this.normalizeTabDisplayMode(
           parsedSettings.tabDisplayMode,
         ),
-        endTimeDisplayMode: this.normalizeCardDisplayMode(parsedSettings.endTimeDisplayMode),
-        remainingTimeDisplayMode: this.normalizeCardDisplayMode(parsedSettings.remainingTimeDisplayMode),
-        accentByTheme: this.normalizeAccentByTheme(
-          parsedSettings.accentByTheme,
+        // Either legacy card option enabled the same shared slider.
+        sliderEnabled: typeof parsedSettings.sliderEnabled === 'boolean'
+          ? parsedSettings.sliderEnabled
+          : parsedSettings.endTimeDisplayMode !== 'standard' || parsedSettings.remainingTimeDisplayMode !== 'standard',
+        animationsEnabled: typeof parsedSettings.animationsEnabled === 'boolean'
+          ? parsedSettings.animationsEnabled
+          : this.defaultSettings.animationsEnabled,
+        accentColor: this.normalizeAccentSelection(
+          parsedSettings.accentColor, parsedSettings.accentByTheme, theme,
         ),
       };
     } catch {
@@ -1316,16 +1406,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private saveSettings(settings: AppSettings): void {
-    const storage = this.getStorage();
-    if (!storage) {
-      return;
-    }
-
-    try {
-      storage.setItem(this.settingsStorageKey, JSON.stringify(settings));
-    } catch {
-      return;
-    }
+    this.writeStorage(this.settingsStorageKey, JSON.stringify(settings));
   }
 
   private syncThemeFromConfig(): void {
@@ -1345,12 +1426,14 @@ export class AppComponent implements OnDestroy {
 
   private syncAccentFromConfig(accentColor: AccentColor): void {
     const currentSettings = this.settings();
+    const accent = this.normalizeAccentColor(accentColor, this.getActiveAccent(currentSettings), currentSettings.theme);
+    if (accent !== accentColor) {
+      this.configForm.controls.accentColor.setValue(accent, { emitEvent: false });
+      return;
+    }
     const nextSettings: AppSettings = {
       ...currentSettings,
-      accentByTheme: {
-        ...currentSettings.accentByTheme,
-        [currentSettings.theme]: accentColor,
-      },
+      accentColor: accent === 'black' || accent === 'white' ? 'monochrome' : accent,
     };
 
     this.settings.set(nextSettings);
@@ -1369,13 +1452,13 @@ export class AppComponent implements OnDestroy {
     this.saveSettings(nextSettings);
   }
 
-  private syncCardDisplayModeFromConfig(
-    kind: 'endTimeDisplayMode' | 'remainingTimeDisplayMode',
-    mode: CardDisplayMode,
+  private syncVisualPreferenceFromConfig(
+    kind: 'sliderEnabled' | 'animationsEnabled',
+    enabled: boolean,
   ): void {
     const nextSettings: AppSettings = {
       ...this.settings(),
-      [kind]: mode,
+      [kind]: enabled,
     };
     this.settings.set(nextSettings);
     this.saveSettings(nextSettings);
@@ -1420,12 +1503,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private loadStartTime(): string | null {
-    const storage = this.getStorage();
-    if (!storage) {
-      return null;
-    }
-
-    const savedStartTime = storage.getItem(this.startTimeStorageKey);
+    const savedStartTime = this.readStorage(this.startTimeStorageKey);
     if (!savedStartTime) {
       return null;
     }
@@ -1440,7 +1518,7 @@ export class AppComponent implements OnDestroy {
         const value = this.normalizeTimeValue(parsedStartTime['value']);
 
         if (date !== this.getTodayKey()) {
-          storage.removeItem(this.startTimeStorageKey);
+          this.removeStorage(this.startTimeStorageKey);
           return null;
         }
 
@@ -1457,7 +1535,7 @@ export class AppComponent implements OnDestroy {
     }
 
     if (!this.normalizeTimeValue(savedStartTime)) {
-      storage.removeItem(this.startTimeStorageKey);
+      this.removeStorage(this.startTimeStorageKey);
       return null;
     }
 
@@ -1465,20 +1543,15 @@ export class AppComponent implements OnDestroy {
   }
 
   private persistStartTime(value: string | null): void {
-    const storage = this.getStorage();
-    if (!storage) {
-      return;
-    }
-
     const normalizedValue = value?.trim() ?? '';
     if (!normalizedValue) {
-      storage.removeItem(this.startTimeStorageKey);
+      this.removeStorage(this.startTimeStorageKey);
       return;
     }
 
     const startTime = this.normalizeTimeValue(normalizedValue);
     if (startTime) {
-      storage.setItem(
+      this.writeStorage(
         this.startTimeStorageKey,
         JSON.stringify({
           date: this.getTodayKey(),
@@ -1503,41 +1576,46 @@ export class AppComponent implements OnDestroy {
     return value === 'remainingTime' ? 'remainingTime' : 'endTime';
   }
 
-  private normalizeCardDisplayMode(value: unknown): CardDisplayMode {
-    return value === 'standard' ? 'standard' : 'timeline';
+  private normalizeExitOffset(value: unknown): number {
+    const offset = typeof value === 'number' && Number.isFinite(value)
+      ? Math.round(value)
+      : 0;
+    return Math.max(-this.flexMinutes, Math.min(this.flexMinutes, offset));
   }
 
-  private normalizeAccentByTheme(
-    value: unknown,
-  ): Record<ThemeMode, AccentColor> {
-    const fallback = this.defaultSettings.accentByTheme;
-    if (!this.isRecord(value)) {
-      return { ...fallback };
-    }
-
-    return {
-      light: this.normalizeAccentColor(value['light'], fallback.light),
-      dark: this.normalizeAccentColor(value['dark'], fallback.dark),
-    };
+  private normalizeAccentSelection(value: unknown, legacy: unknown, theme: ThemeMode): AccentSelection {
+    if (value === 'monochrome' || value === 'black' || value === 'white') return 'monochrome';
+    // Migrate the current palette once; the other theme's old selection no longer applies.
+    const fallback = this.normalizeAccentColor(
+      this.isRecord(legacy) ? legacy[theme] : undefined,
+      this.getActiveAccent({ ...this.defaultSettings, theme }), theme,
+    );
+    const accent = this.normalizeAccentColor(value, fallback, theme);
+    return accent === 'black' || accent === 'white' ? 'monochrome' : accent;
   }
 
   private normalizeAccentColor(
     value: unknown,
     fallback: AccentColor,
+    theme: ThemeMode,
   ): AccentColor {
     return (
       value === 'violet' ||
       value === 'green' ||
       value === 'red' ||
       value === 'pink' ||
-      value === 'yellow'
+      value === 'yellow' ||
+      (value === 'black' && theme === 'light') ||
+      (value === 'white' && theme === 'dark')
     )
       ? value
       : fallback;
   }
 
   private getActiveAccent(settings: AppSettings): AccentColor {
-    return settings.accentByTheme[settings.theme];
+    return settings.accentColor === 'monochrome'
+      ? settings.theme === 'dark' ? 'white' : 'black'
+      : settings.accentColor;
   }
 
   private getFavoriteStartPrefix(favoriteHour: FavoriteHour): string {
@@ -1595,11 +1673,6 @@ export class AppComponent implements OnDestroy {
     return `${hours}h ${minutes}min`;
   }
 
-  private formatRoundedRemaining(diffSeconds: number): string {
-    const totalMinutes = Math.ceil(Math.max(0, diffSeconds) / 60);
-    return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`;
-  }
-
   private calculateProgress(startSeconds: number, targetSeconds: number, nowSeconds: number): number {
     const duration = targetSeconds - startSeconds;
     if (duration <= 0) {
@@ -1609,79 +1682,86 @@ export class AppComponent implements OnDestroy {
   }
 
   private startCountdown(): void {
-    if (this.countdownTargetSeconds === null) {
+    if (this.countdownBaseTargetSeconds === null || this.result()?.state === 'complete') {
+      this.stopCountdownTimer();
+      return;
+    }
+    if (this.countdownInterval !== null) {
       return;
     }
 
     this.countdownInterval = setInterval(() => {
-      const target = this.countdownTargetSeconds;
-      const start = this.countdownStartSeconds;
-      if (target === null || start === null) {
-        this.clearCountdown();
-        return;
-      }
-
-      const now = new Date();
-      const nowSecondsTotal = this.countdownDateKey === this.getTodayKey(now)
-        ? now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
-        : target + this.flexMinutes * 60;
-      const diffSeconds = Math.max(0, target - nowSecondsTotal);
-      const reachedEarly = nowSecondsTotal >= target - this.flexMinutes * 60;
-      const reachedStandard = nowSecondsTotal >= target;
-      const reachedLate = nowSecondsTotal >= target + this.flexMinutes * 60;
-
-      this.result.update((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const nextState: ResultState = nowSecondsTotal < start
-          ? 'beforeStart'
-          : reachedStandard ? 'complete' : 'inProgress';
-        let nextMessage = current.message;
-
-        if (nextState !== current.state) {
-          if (this.messageContext) {
-            nextMessage = this.pickMessage(
-              this.messageContext.dayName,
-              this.formatRemainingMessage(diffSeconds),
-              0,
-              nextState,
-              this.messageContext.startLabel,
-              this.messageContext.endLabel,
-            );
-          }
-        }
-
-        return {
-          ...current,
-          state: nextState,
-          remainingLabel: this.formatRemainingLabel(diffSeconds),
-          remainingClockLabel: this.formatRemainingClock(diffSeconds),
-          earlyRemainingLabel: this.formatRoundedRemaining(target - this.flexMinutes * 60 - nowSecondsTotal),
-          lateRemainingLabel: this.formatRoundedRemaining(target + this.flexMinutes * 60 - nowSecondsTotal),
-          remainingTitleLabel: this.formatRemainingMessage(diffSeconds),
-          reachedEarly,
-          reachedStandard,
-          reachedLate,
-          progressPercent: this.calculateProgress(start, target, nowSecondsTotal),
-          message: nextMessage,
-        };
-      });
-
-      if (reachedLate) {
-        this.countdownTargetSeconds = null;
-        this.countdownStartSeconds = null;
-        this.clearCountdown();
+      this.updateCountdown();
+      if (this.result()?.state === 'complete') {
+        this.stopCountdownTimer();
       }
     }, 1000);
   }
 
-  private clearCountdown(): void {
+  private updateCountdown(preserveMessage = false): void {
+    const baseTarget = this.countdownBaseTargetSeconds;
+    const start = this.countdownStartSeconds;
+    if (baseTarget === null || start === null) {
+      return;
+    }
+
+    // Keep the calculated plan as the baseline so repeated changes never accumulate.
+    const target = baseTarget + this.exitOffsetMinutes() * 60;
+    const endTime = this.formatMinutes(target / 60);
+    const now = new Date();
+    const nowSecondsTotal = this.countdownDateKey === this.getTodayKey(now)
+      ? now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+      : Math.max(target, start);
+    const diffSeconds = Math.max(0, target - nowSecondsTotal);
+    const remainingTitleLabel = this.formatRemainingMessage(diffSeconds);
+
+    this.result.update((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const state: ResultState = nowSecondsTotal >= target
+        ? 'complete'
+        : nowSecondsTotal < start ? 'beforeStart' : 'inProgress';
+      let message = current.message;
+      const context = this.messageContext;
+      if (context) {
+        // A slider gesture keeps the sentence, even when it crosses the exit time.
+        // Only a natural start/end transition selects a new message.
+        if (!preserveMessage && state !== current.state) {
+          context.template = this.pickMessageTemplate(context.dayName, Math.ceil(diffSeconds / 60), state);
+        }
+        message = this.formatTemplate(
+          context.template,
+          context.dayName,
+          remainingTitleLabel,
+          context.startLabel,
+          endTime,
+        );
+      }
+
+      return {
+        ...current,
+        endTime,
+        state,
+        remainingLabel: this.formatRemainingLabel(diffSeconds),
+        remainingClockLabel: this.formatRemainingClock(diffSeconds),
+        remainingTitleLabel,
+        progressPercent: this.calculateProgress(start, target, nowSecondsTotal),
+        message,
+      };
+    });
+  }
+
+  private stopCountdownTimer(): void {
     if (this.countdownInterval !== null) {
       clearInterval(this.countdownInterval);
       this.countdownInterval = null;
     }
+  }
+
+  private clearCountdown(): void {
+    this.stopCountdownTimer();
     this.countdownDateKey = null;
   }
 
@@ -1692,9 +1772,35 @@ export class AppComponent implements OnDestroy {
     }
 
     this.isSwitchingToResult.set(false);
+    this.isSwitchingToForm.set(false);
+    this.isResultRevealing.set(false);
+    this.viewMorph.cancel();
+  }
+
+  private startViewMorph(snapshot: ViewMorphSnapshot | null, mode: 'form' | 'result'): void {
+    this.isSwitchingToResult.set(mode === 'result');
+    this.isSwitchingToForm.set(mode === 'form');
+    this.isResultRevealing.set(mode === 'result');
+    this.changeDetector.detectChanges();
+    this.zone.runOutsideAngular(() => this.viewMorph.play(snapshot));
+    this.resultTransitionTimeout = setTimeout(() => {
+      this.viewMorph.cancel();
+      this.isSwitchingToResult.set(false);
+      this.isSwitchingToForm.set(false);
+      this.isResultRevealing.set(false);
+      this.resultTransitionTimeout = null;
+    }, VIEW_MORPH_MS);
+  }
+
+  private prefersReducedMotion(): boolean {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   private queueDynamicCardRemoval(callback: () => void): void {
+    if (this.prefersReducedMotion()) {
+      callback();
+      return;
+    }
     const timeout = setTimeout(() => {
       callback();
       this.dynamicCardTimeouts = this.dynamicCardTimeouts.filter(
@@ -1875,32 +1981,17 @@ export class AppComponent implements OnDestroy {
     return { totalEndMinutes, error: null };
   }
 
-  private pickMessage(
+  private pickMessageTemplate(
     dayName: string,
-    remainingLabel: string,
     diffMinutes: number,
     state: ResultState,
-    startLabel: string,
-    endLabel: string,
   ): string {
     if (state === 'beforeStart') {
-      return this.resolveTemplate(
-        this.beforeStartMessages,
-        dayName,
-        remainingLabel,
-        startLabel,
-        endLabel,
-      );
+      return this.randomTemplate(this.beforeStartMessages);
     }
 
     if (state === 'complete') {
-      return this.resolveTemplate(
-        this.afterWorkMessages,
-        dayName,
-        remainingLabel,
-        startLabel,
-        endLabel,
-      );
+      return this.randomTemplate(this.afterWorkMessages);
     }
 
     const range: 'red' | 'orange' | 'yellow' | 'green' =
@@ -1914,30 +2005,11 @@ export class AppComponent implements OnDestroy {
 
     const messageDay = this.messageSets[dayName] ? dayName : 'Poniedziałek';
     const templates = this.messageSets[messageDay][range];
-    return this.resolveTemplate(
-      templates,
-      dayName,
-      remainingLabel,
-      startLabel,
-      endLabel,
-    );
+    return this.randomTemplate(templates);
   }
 
-  private resolveTemplate(
-    templates: string[],
-    dayName: string,
-    remainingLabel: string,
-    startLabel: string,
-    endLabel: string,
-  ): string {
-    const template = templates[Math.floor(Math.random() * templates.length)];
-    return this.formatTemplate(
-      template,
-      dayName,
-      remainingLabel,
-      startLabel,
-      endLabel,
-    );
+  private randomTemplate(templates: string[]): string {
+    return templates[Math.floor(Math.random() * templates.length)];
   }
 
   private formatTemplate(

@@ -3,6 +3,7 @@
     class="panel"
     [class.compact-panel]="isCompactMode()"
     [class.switching-to-result]="isSwitchingToResult()"
+    [class.switching-to-form]="isSwitchingToForm()"
   >
     <header class="panel-header" *ngIf="!isCompactMode()">
       <h1>Kalkulator końca pracy</h1>
@@ -12,16 +13,17 @@
         (click)="openConfig()"
         aria-label="Otwórz konfigurację"
         data-tooltip="Konfiguracja"
-        >
-          ⚙
+        ><span class="button-sheen" aria-hidden="true"></span>
+          <svg class="control-icon user-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg>
         </button>
       </header>
 
     <form
-      class="form fade-in"
+      class="form"
       *ngIf="!isCompactMode()"
       [formGroup]="form"
-      [class.form-switching-out]="isSwitchingToResult()"
       novalidate
     >
       <div class="form-row">
@@ -63,39 +65,49 @@
       </div>
 
       <div class="breaks-controls">
-        <button type="button" class="ghost-button" (click)="addBreak()">
-          + Przerwa
+        <button type="button" class="ghost-button" (click)="addBreak()"><span class="button-sheen" aria-hidden="true"></span>
+          <span class="button-label">+ Przerwa</span>
         </button>
         <button
           type="button"
           class="ghost-button"
           (click)="showAdjustment('overtimePickup')"
           [disabled]="hasAnyAdjustment()"
-        >
-          + Odbiór nadgodzin
+        ><span class="button-sheen" aria-hidden="true"></span>
+          <span class="button-label">+ Odbiór nadgodzin</span>
         </button>
         <button
           type="button"
           class="ghost-button"
           (click)="showAdjustment('undertimeMakeup')"
           [disabled]="hasAnyAdjustment()"
-        >
-          + Odrobienie niedoczasu
+        ><span class="button-sheen" aria-hidden="true"></span>
+          <span class="button-label">+ Odrobienie niedoczasu</span>
         </button>
       </div>
 
-      <div class="breaks-wrapper" formArrayName="breaks">
-        <div class="breaks-title" *ngIf="breaks.length > 0">Przerwy</div>
+      <div class="dynamic-panel-frame" appPanelMotion formArrayName="breaks" *ngIf="breaks.length > 0"
+        [panelMotionBorder]="breaks.length === 1"
+        [panelOpening]="!isSwitchingToForm() && isBreakHighlighted(breaks.at(0))"
+        [panelClosing]="isBreakGroupRemoving()">
+      <div class="panel-motion-content breaks-wrapper">
+        <div class="breaks-title">Przerwy</div>
 
-        <div class="breaks" *ngIf="breaks.length > 0">
+        <div class="breaks">
           <div
-            class="break-row"
+            class="dynamic-panel-frame" appPanelMotion
             *ngFor="
               let breakGroup of breaks.controls;
               let i = index;
               trackBy: trackByBreakControl
             "
-            [formGroupName]="i"
+            [panelMotionEnabled]="breaks.length > 1"
+            [panelMotionBorder]="breaks.length > 1"
+            [panelOpening]="!isSwitchingToForm() && isBreakHighlighted(breakGroup)"
+            [panelClosing]="breaks.length > 1 && isBreakRemoving(breakGroup)"
+          >
+          <div class="panel-motion-content">
+          <div class="break-row" [formGroupName]="i"
             [class.dynamic-card-leaving]="isBreakRemoving(breakGroup)"
             [class.dynamic-card-enter]="isBreakHighlighted(breakGroup)"
             [class.dynamic-card-sweep]="isBreakHighlighted(breakGroup)"
@@ -146,8 +158,10 @@
               (click)="removeBreak(i)"
               [disabled]="isBreakRemoving(breakGroup)"
               aria-label="Usuń przerwę"
-            >
-              ✖
+            ><span class="button-sheen" aria-hidden="true"></span>
+              <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
             </button>
 
             <div
@@ -157,16 +171,23 @@
               Uzupełnij obie godziny.
             </div>
           </div>
+          </div>
+          </div>
         </div>
+      </div>
       </div>
 
       <div
-        class="adjustments-wrapper"
+        class="dynamic-panel-frame" appPanelMotion
+        [panelMotionBorder]="true"
+        [panelOpening]="!isSwitchingToForm() && (isAdjustmentHighlighted('overtimePickup') || isAdjustmentHighlighted('undertimeMakeup'))"
+        [panelClosing]="isAdjustmentRemoving('overtimePickup') || isAdjustmentRemoving('undertimeMakeup')"
         *ngIf="
           isAdjustmentVisible('overtimePickup') ||
           isAdjustmentVisible('undertimeMakeup')
         "
       >
+        <div class="panel-motion-content adjustments-wrapper">
         <div
           class="adjustment-row"
           *ngIf="isAdjustmentVisible('overtimePickup')"
@@ -223,8 +244,10 @@
             (click)="removeAdjustment('overtimePickup')"
             [disabled]="isAdjustmentRemoving('overtimePickup')"
             aria-label="Usuń odbiór nadgodzin"
-          >
-            ✖
+          ><span class="button-sheen" aria-hidden="true"></span>
+            <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
           </button>
         </div>
 
@@ -284,9 +307,12 @@
             (click)="removeAdjustment('undertimeMakeup')"
             [disabled]="isAdjustmentRemoving('undertimeMakeup')"
             aria-label="Usuń odrobienie niedoczasu"
-          >
-            ✖
+          ><span class="button-sheen" aria-hidden="true"></span>
+            <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
           </button>
+        </div>
         </div>
       </div>
 
@@ -295,7 +321,7 @@
         class="primary-button"
         (click)="calculate()"
         [disabled]="!canCalculate || isSwitchingToResult()"
-      >
+      ><span class="button-sheen" aria-hidden="true"></span>
         <span>Przelicz</span>
       </button>
 
@@ -304,15 +330,18 @@
       </div>
     </form>
 
-    <section *ngIf="result() as payload" class="result-block result-reveal">
+    <section *ngIf="resultSurface() as payload" class="result-block"
+      [class.result-cache]="!isCompactMode()"
+      [attr.aria-hidden]="!isCompactMode() ? 'true' : null"
+      [attr.inert]="!isCompactMode() ? '' : null"
+      [class.result-reveal]="isResultRevealing()">
       <div
-        class="card highlight-card fade-in"
-        [class.compact-highlight]="isCompactMode()"
+        class="card highlight-card compact-highlight"
         [class.complete]="payload.state === 'complete'"
         >
         <div
           class="celebration"
-          *ngIf="payload.state === 'complete'"
+          *ngIf="payload.state === 'complete' && settings().animationsEnabled"
           aria-hidden="true"
         >
           <div class="energy-rings">
@@ -356,7 +385,7 @@
           <div class="comet comet-left"></div>
           <div class="comet comet-right"></div>
         </div>
-        <div class="compact-toolbar" *ngIf="isCompactMode()">
+        <div class="compact-toolbar">
           <div class="compact-details">
             <span class="compact-detail">Start: {{ payload.startTime }}</span>
             <span class="compact-detail" *ngIf="payload.adjustmentLabel">
@@ -375,70 +404,84 @@
               [attr.aria-valuenow]="payload.progressPercent"
               aria-valuemin="0"
               aria-valuemax="100"
-              [attr.aria-label]="'Ukończono ' + payload.progressPercent + '% czasu do standardowego wyjścia'"
-              [attr.title]="payload.progressPercent + '% czasu do standardowego wyjścia'"
+              [attr.aria-label]="'Ukończono ' + payload.progressPercent + '% czasu do wyjścia'"
+              [attr.title]="payload.progressPercent + '% czasu do wyjścia'"
             >
               <span>{{ payload.progressPercent }}%</span>
             </div>
-            <button type="button" class="edit-button" (click)="editPlan()">
+            <button type="button" class="edit-button" (click)="editPlan()"><span class="button-sheen" aria-hidden="true"></span>
               Edytuj
             </button>
           </div>
         </div>
-        <div class="summary-line">
-          <article class="summary-item" *ngIf="settings().endTimeDisplayMode === 'standard'">
-            <div class="summary-icon" aria-hidden="true">🚪</div>
-            <div class="summary-content">
-              <span class="summary-label">Wyjście</span>
-              <span class="summary-value">{{ payload.endTime }}</span>
-            </div>
+        <div class="summary-line result-summary">
+          <article class="summary-item result-time-card exit-time-card">
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime" [active]="isCompactMode()"></app-liquid-backdrop>
+            <span class="result-time-label">Wyjście</span>
+            <strong class="result-time-value" [appTimeValue]="payload.endTime"></strong>
           </article>
-          <article class="summary-item timeline-item" *ngIf="settings().endTimeDisplayMode === 'timeline'">
-            <div class="timeline-heading">Wyjście</div>
-            <div class="milestone-timeline" [class.early-reached]="payload.reachedEarly" [class.standard-reached]="payload.reachedStandard" [class.late-reached]="payload.reachedLate">
-              <div class="timeline-track" aria-hidden="true">
-                <span class="timeline-dot"></span><span class="timeline-link"></span>
-                <span class="timeline-dot main-dot"></span><span class="timeline-link"></span>
-                <span class="timeline-dot"></span>
+
+          <div class="exit-slider" *ngIf="showExitSlider()">
+            <button
+              type="button"
+              class="offset-button"
+              aria-label="Przesuń wyjście o minutę wcześniej"
+              [disabled]="exitOffsetMinutes() === -flexMinutes"
+              (click)="adjustExitOffset(-1)"
+            ><span class="button-sheen" aria-hidden="true"></span>
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <path d="M3 8h10" />
+              </svg>
+            </button>
+            <div class="offset-control">
+              <div class="offset-scale" aria-hidden="true">
+                <div class="offset-track">
+                  <span class="offset-fill" [style.width.%]="exitOffsetPercent()"></span>
+                </div>
+                <span class="offset-orb" [style.left.%]="exitOffsetPercent()"></span>
+                <output
+                  class="offset-label"
+                  for="exit-offset"
+                  [style.left.%]="exitOffsetPercent()"
+                >{{ exitOffsetLabel() }}</output>
               </div>
-              <div class="timeline-values">
-                <div class="timeline-point"><span class="visually-hidden">15 minut wcześniej: </span><strong>{{ payload.earlyEndTime }}</strong></div>
-                <div class="timeline-point main-point"><span class="visually-hidden">Standardowo: </span><strong>{{ payload.endTime }}</strong></div>
-                <div class="timeline-point"><span class="visually-hidden">15 minut później: </span><strong>{{ payload.lateEndTime }}</strong></div>
-              </div>
+              <input
+                id="exit-offset"
+                class="offset-range"
+                type="range"
+                [min]="-flexMinutes"
+                [max]="flexMinutes"
+                step="1"
+                [value]="exitOffsetMinutes()"
+                aria-label="Korekta godziny wyjścia w minutach"
+                [attr.aria-valuetext]="exitOffsetLabel() || 'Standardowa godzina wyjścia'"
+                (input)="onExitOffsetInput($event)"
+              />
             </div>
-          </article>
-          <article class="summary-item" *ngIf="settings().remainingTimeDisplayMode === 'standard'">
-            <div class="summary-icon" aria-hidden="true">⏳</div>
-            <div class="summary-content">
-              <span class="summary-label">Czas</span>
-              <span class="summary-value">{{ payload.remainingLabel }}</span>
-            </div>
-          </article>
-          <article class="summary-item timeline-item remaining-timeline" *ngIf="settings().remainingTimeDisplayMode === 'timeline'">
-            <div class="timeline-heading">Czas</div>
-            <div class="milestone-timeline" [class.early-reached]="payload.reachedEarly" [class.standard-reached]="payload.reachedStandard" [class.late-reached]="payload.reachedLate">
-              <div class="timeline-track" aria-hidden="true">
-                <span class="timeline-dot"></span><span class="timeline-link"></span>
-                <span class="timeline-dot main-dot"></span><span class="timeline-link"></span>
-                <span class="timeline-dot"></span>
-              </div>
-              <div class="timeline-values">
-                <div class="timeline-point"><span class="visually-hidden">Do wcześniejszego wyjścia: </span><strong>{{ payload.earlyRemainingLabel }}</strong></div>
-                <div class="timeline-point main-point"><span class="visually-hidden">Do standardowego wyjścia: </span><strong>{{ payload.remainingClockLabel }}</strong></div>
-                <div class="timeline-point"><span class="visually-hidden">Do późniejszego wyjścia: </span><strong>{{ payload.lateRemainingLabel }}</strong></div>
-              </div>
-            </div>
+            <button
+              type="button"
+              class="offset-button"
+              aria-label="Przesuń wyjście o minutę później"
+              [disabled]="exitOffsetMinutes() === flexMinutes"
+              (click)="adjustExitOffset(1)"
+            ><span class="button-sheen" aria-hidden="true"></span>
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <path d="M3 8h10M8 3v10" />
+              </svg>
+            </button>
+          </div>
+
+          <article class="summary-item result-time-card remaining-time-card">
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="payload.remainingClockLabel" [active]="isCompactMode()"></app-liquid-backdrop>
+            <span class="result-time-label">Czas</span>
+            <strong class="result-time-value" [appTimeValue]="payload.remainingClockLabel"></strong>
           </article>
         </div>
-        <div class="compact-feedback-box" *ngIf="isCompactMode()">
+        <div class="compact-feedback-box">
           <p class="compact-feedback">
             {{ payload.message }}
           </p>
         </div>
-      </div>
-      <div class="card message-card fade-in" *ngIf="!isCompactMode()">
-        <p>{{ payload.message }}</p>
       </div>
     </section>
   </section>
@@ -462,8 +505,10 @@
           class="icon-button"
           (click)="closeConfig()"
           aria-label="Zamknij konfigurację"
-        >
-          ✖
+        ><span class="button-sheen" aria-hidden="true"></span>
+          <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+          </svg>
         </button>
       </header>
 
@@ -473,17 +518,17 @@
           <div class="theme-segment" role="group" aria-label="Motyw aplikacji">
             <button
               type="button"
-              [class.active]="!configForm.controls.darkMode.value"
-              (click)="setDarkMode(false)"
-            >
-              Jasny
+              [class.active]="configForm.controls.darkMode.value"
+              (click)="setDarkMode(true)"
+            ><span class="button-sheen" aria-hidden="true"></span>
+              Ciemny
             </button>
             <button
               type="button"
-              [class.active]="configForm.controls.darkMode.value"
-              (click)="setDarkMode(true)"
-            >
-              Ciemny
+              [class.active]="!configForm.controls.darkMode.value"
+              (click)="setDarkMode(false)"
+            ><span class="button-sheen" aria-hidden="true"></span>
+              Jasny
             </button>
           </div>
         </div>
@@ -507,25 +552,25 @@
               [attr.aria-checked]="isTabDisplayModeSelected(option.value)"
               role="radio"
               (click)="setTabDisplayMode(option.value)"
-            >
+            ><span class="button-sheen" aria-hidden="true"></span>
               {{ option.label }}
             </button>
           </div>
         </div>
 
         <div class="config-row">
-          <span id="end-time-display-label" class="config-label">Wyświetlanie godziny wyjścia</span>
-          <div class="title-segment" role="radiogroup" aria-labelledby="end-time-display-label">
-            <button type="button" role="radio" [class.active]="settings().endTimeDisplayMode === 'standard'" [attr.aria-checked]="settings().endTimeDisplayMode === 'standard'" (click)="setCardDisplayMode('endTimeDisplayMode', 'standard')">Standardowa</button>
-            <button type="button" role="radio" [class.active]="settings().endTimeDisplayMode === 'timeline'" [attr.aria-checked]="settings().endTimeDisplayMode === 'timeline'" (click)="setCardDisplayMode('endTimeDisplayMode', 'timeline')">Oś czasu ±15 min</button>
+          <span id="slider-display-label" class="config-label">Wyświetlanie suwaka</span>
+          <div class="title-segment" role="radiogroup" aria-labelledby="slider-display-label">
+            <button type="button" role="radio" [class.active]="settings().sliderEnabled" [attr.aria-checked]="settings().sliderEnabled" (click)="setSliderEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
+            <button type="button" role="radio" [class.active]="!settings().sliderEnabled" [attr.aria-checked]="!settings().sliderEnabled" (click)="setSliderEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
           </div>
         </div>
 
         <div class="config-row">
-          <span id="remaining-time-display-label" class="config-label">Wyświetlanie czasu do końca</span>
-          <div class="title-segment" role="radiogroup" aria-labelledby="remaining-time-display-label">
-            <button type="button" role="radio" [class.active]="settings().remainingTimeDisplayMode === 'standard'" [attr.aria-checked]="settings().remainingTimeDisplayMode === 'standard'" (click)="setCardDisplayMode('remainingTimeDisplayMode', 'standard')">Standardowy</button>
-            <button type="button" role="radio" [class.active]="settings().remainingTimeDisplayMode === 'timeline'" [attr.aria-checked]="settings().remainingTimeDisplayMode === 'timeline'" (click)="setCardDisplayMode('remainingTimeDisplayMode', 'timeline')">Oś czasu ±15 min</button>
+          <span id="animations-display-label" class="config-label">Wyświetlanie animacji</span>
+          <div class="title-segment" role="radiogroup" aria-labelledby="animations-display-label">
+            <button type="button" role="radio" [class.active]="settings().animationsEnabled" [attr.aria-checked]="settings().animationsEnabled" (click)="setAnimationsEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
+            <button type="button" role="radio" [class.active]="!settings().animationsEnabled" [attr.aria-checked]="!settings().animationsEnabled" (click)="setAnimationsEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
           </div>
         </div>
 
@@ -550,7 +595,7 @@
               [attr.title]="option.label"
               role="radio"
               (click)="setAccentColor(option.value)"
-            >
+            ><span class="button-sheen" aria-hidden="true"></span>
               <span class="visually-hidden">{{ option.label }}</span>
             </button>
           </div>
@@ -582,7 +627,7 @@
               [attr.title]="option.value === null ? option.tooltip : null"
               role="radio"
               (click)="setFavoriteHour(option.value)"
-            >
+            ><span class="button-sheen" aria-hidden="true"></span>
               <span
                 *ngIf="option.value === null"
                 class="favorite-hour-empty-icon"
