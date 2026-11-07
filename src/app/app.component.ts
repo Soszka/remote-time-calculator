@@ -513,7 +513,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private resultTransition: Animation | null = null;
   private readonly viewMorph: ViewMorph;
   private warmupIdle: number | null = null;
-  private warmupTimeout: ReturnType<typeof setTimeout> | null = null;
   private dynamicCardTimeouts: ReturnType<typeof setTimeout>[] = [];
   private dynamicCardHighlightTimeouts: ReturnType<typeof setTimeout>[] = [];
   private countdownBaseTargetSeconds: number | null = null;
@@ -596,11 +595,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     return this.settings().theme === 'dark';
   }
 
-  @HostBinding('class.simple-time-cards')
-  get simpleTimeCardsClass(): boolean {
-    return !this.settings().animationsEnabled;
-  }
-
   @HostBinding('class.accent-violet')
   get accentVioletClass(): boolean {
     return this.getActiveAccent(this.settings()) === 'violet';
@@ -637,28 +631,21 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // Compile the two GPU programs between interactions, not in the first click.
+    if (typeof window.requestIdleCallback !== 'function') return;
     this.zone.runOutsideAngular(() => {
-      const prepare = (): void => {
+      this.warmupIdle = window.requestIdleCallback(() => {
         this.warmupIdle = null;
-        this.warmupTimeout = null;
-        if (this.result() || !this.canAnimate()) return;
+        if (this.result() || !this.settings().animationsEnabled || !this.canAnimate()) return;
         this.zone.run(() => {
           this.surfacePrepared.set(true);
           this.changeDetector.detectChanges();
         });
-      };
-      if (typeof window.requestIdleCallback === 'function') {
-        this.warmupIdle = window.requestIdleCallback(prepare, { timeout: 1500 });
-      } else {
-        this.warmupTimeout = setTimeout(prepare, 200);
-      }
+      });
     });
   }
 
   ngOnDestroy(): void {
     if (this.warmupIdle !== null) window.cancelIdleCallback(this.warmupIdle);
-    if (this.warmupTimeout !== null) clearTimeout(this.warmupTimeout);
     this.clearCountdown();
     this.clearToast();
     this.clearResultTransition();
@@ -1475,7 +1462,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     };
     this.settings.set(nextSettings);
     this.saveSettings(nextSettings);
-    if (kind === 'animationsEnabled' && !enabled) this.viewMorph.cancel();
   }
 
   private syncDocumentTitle(
@@ -1819,7 +1805,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private canAnimate(): boolean {
-    return this.settings().animationsEnabled && !document.hidden &&
+    return !document.hidden &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 

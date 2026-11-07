@@ -90,7 +90,6 @@
       </div>
 
       <div class="dynamic-panel-frame" appPanelMotion formArrayName="breaks" *ngIf="breaks.length > 0"
-        [panelMotionEnabled]="settings().animationsEnabled"
         [panelMotionBorder]="breaks.length === 1"
         [panelOpening]="!isSwitchingToForm() && isBreakHighlighted(breaks.at(0))"
         [panelClosing]="isBreakGroupRemoving()">
@@ -105,7 +104,7 @@
               let i = index;
               trackBy: trackByBreakControl
             "
-            [panelMotionEnabled]="settings().animationsEnabled && breaks.length > 1"
+            [panelMotionEnabled]="breaks.length > 1"
             [panelMotionBorder]="breaks.length > 1"
             [panelOpening]="!isSwitchingToForm() && isBreakHighlighted(breakGroup)"
             [panelClosing]="breaks.length > 1 && isBreakRemoving(breakGroup)"
@@ -183,7 +182,6 @@
 
       <div
         class="dynamic-panel-frame" appPanelMotion
-        [panelMotionEnabled]="settings().animationsEnabled"
         [panelMotionBorder]="true"
         [panelOpening]="!isSwitchingToForm() && (isAdjustmentHighlighted('overtimePickup') || isAdjustmentHighlighted('undertimeMakeup'))"
         [panelClosing]="isAdjustmentRemoving('overtimePickup') || isAdjustmentRemoving('undertimeMakeup')"
@@ -346,7 +344,7 @@
         >
         <div
           class="celebration"
-          *ngIf="payload.state === 'complete' && settings().animationsEnabled"
+          *ngIf="payload.state === 'complete' && !isSwitchingToResult()"
           aria-hidden="true"
         >
           <div class="energy-rings">
@@ -422,7 +420,7 @@
         <div class="summary-line result-summary">
           <article class="summary-item result-time-card exit-time-card">
             <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime"
-              [active]="isCompactMode()" [motionPaused]="isSwitchingToResult()"></app-liquid-backdrop>
+              [active]="isCompactMode()" [motionPaused]="isSwitchingToResult() || isSwitchingToForm()"></app-liquid-backdrop>
             <span class="result-time-label">Wyjście</span>
             <strong class="result-time-value" [appTimeValue]="payload.endTime"></strong>
           </article>
@@ -479,7 +477,7 @@
 
           <article class="summary-item result-time-card remaining-time-card">
             <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="payload.remainingClockLabel"
-              [active]="isCompactMode()" [motionPaused]="isSwitchingToResult()"></app-liquid-backdrop>
+              [active]="isCompactMode()" [motionPaused]="isSwitchingToResult() || isSwitchingToForm()"></app-liquid-backdrop>
             <span class="result-time-label">Czas</span>
             <strong class="result-time-value" [appTimeValue]="payload.remainingClockLabel"></strong>
           </article>
@@ -576,7 +574,7 @@
         </div>
 
         <div class="config-row">
-          <span id="animations-display-label" class="config-label">Wyświetlanie animacji</span>
+          <span id="animations-display-label" class="config-label">Animacja tła zegarów</span>
           <div class="title-segment" role="radiogroup" aria-labelledby="animations-display-label" (keydown)="onBinarySettingKeydown($event)">
             <button type="button" role="radio" [class.active]="settings().animationsEnabled" [attr.aria-checked]="settings().animationsEnabled"
               [tabIndex]="settings().animationsEnabled ? 0 : -1" (click)="setAnimationsEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>

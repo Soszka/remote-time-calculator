@@ -2110,6 +2110,8 @@ app-liquid-backdrop {
   pointer-events: none;
 }
 
+app-liquid-backdrop.backdrop-pending { visibility: hidden; }
+
 .liquid-flow-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
 .has-liquid-canvas .liquid-flow-canvas { opacity: 1; }
 .liquid-flow-fallback {
@@ -2680,37 +2682,29 @@ app-root .view-morph-overlay * {
   app-root .offset-orb::before { transition: none; }
 }
 
-/* Disabling Flow removes its canvas; the same clocks use a quiet, opaque surface. */
-app-root.simple-time-cards .summary-item.result-time-card {
+/* The static clocks are also used while a panel is folding or unfolding. */
+app-root .summary-item.result-time-card:not(.has-liquid-canvas) {
   border: 1px solid var(--form-card-rim);
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 7%, #fff), color-mix(in srgb, var(--accent-solid) 13%, #f8fafc));
   box-shadow: 0 3px 12px color-mix(in srgb, var(--accent-solid) 8%, transparent);
 }
-app-root.dark-mode.simple-time-cards .summary-item.result-time-card {
+app-root.dark-mode .summary-item.result-time-card:not(.has-liquid-canvas) {
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent-solid) 12%, #08101a), color-mix(in srgb, var(--accent-solid) 6%, #0c1420));
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
 }
-app-root.accent-black.simple-time-cards .summary-item.result-time-card { background: linear-gradient(145deg, #fff, #e9e9e9); }
-app-root.dark-mode.accent-white.simple-time-cards .summary-item.result-time-card { background: linear-gradient(145deg, #202020, #141414); }
-app-root.simple-time-cards .result-time-card::before,
-app-root.simple-time-cards .result-time-card::after {
+app-root.accent-black .summary-item.result-time-card:not(.has-liquid-canvas) { background: linear-gradient(145deg, #fff, #e9e9e9); }
+app-root.dark-mode.accent-white .summary-item.result-time-card:not(.has-liquid-canvas) { background: linear-gradient(145deg, #202020, #141414); }
+app-root .result-time-card:not(.has-liquid-canvas)::before,
+app-root .result-time-card:not(.has-liquid-canvas)::after {
   display: none;
 }
-app-root.simple-time-cards .result-time-value {
+app-root .result-time-card:not(.has-liquid-canvas) .result-time-value {
   color: color-mix(in srgb, color-mix(in srgb, var(--control-ink) 88%, #242424) 90%, transparent);
   -webkit-text-stroke: 0;
   text-shadow: none;
 }
-app-root.dark-mode.simple-time-cards .result-time-value { color: color-mix(in srgb, var(--control-ink) 90%, transparent); }
-app-root.simple-time-cards .result-time-label { text-shadow: none; }
-app-root.simple-time-cards *,
-app-root.simple-time-cards :not(.work-progress)::before,
-app-root.simple-time-cards *::after {
-  animation: none !important;
-  transition: none !important;
-}
-app-root.simple-time-cards .button-ripple-layer { display: none; }
-
+app-root.dark-mode .result-time-card:not(.has-liquid-canvas) .result-time-value { color: color-mix(in srgb, var(--control-ink) 90%, transparent); }
+app-root .result-time-card:not(.has-liquid-canvas) .result-time-label { text-shadow: none; }
 @media (max-width: 430px) {
   app-root .accent-picker {
     --config-circle-size: clamp(34px, 10vw, 40px);

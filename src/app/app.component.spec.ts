@@ -164,21 +164,49 @@ describe('AppComponent', () => {
     fixture = null;
   });
 
-  it('handles form submit and returns focus without motion when animations are disabled', () => {
-    const app = createApp();
-    app.setAnimationsEnabled(false);
-    app.form.controls.startTime.setValue('08:00');
-    fixture!.detectChanges();
-    const page = fixture!.nativeElement as HTMLElement;
-    page.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    expect(app.isCompactMode()).toBeTrue();
-    expect(page.querySelector('.panel')!.hasAttribute('inert')).toBeFalse();
-    expect(page.querySelector('.view-morph-overlay')).toBeNull();
-    const result = page.querySelector('.result-block')!;
-    expect(document.activeElement).toBe(result);
-    expect(getComputedStyle(result).outlineStyle).toBe('none');
-    app.editPlan();
-    expect(document.activeElement).toBe(page.querySelector('#start-time'));
+  it('uses the same transition for both backdrop settings and initializes cold WebGL after the result settles', async () => {
+    spyOn(window, 'matchMedia').and.returnValue({ matches: false } as MediaQueryList);
+    spyOn(window, 'requestIdleCallback').and.returnValue(42);
+    const contexts = spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
+    const finishTransition = async (panel: Element) => {
+      const animation = panel.getAnimations().find(animation => !(animation instanceof CSSTransition))!;
+      const finished = animation.finished;
+      animation.finish();
+      await finished;
+    };
+
+    let firstTiming: number[] | undefined;
+    for (const backdropEnabled of [false, true]) {
+      localStorage.clear();
+      const app = createApp();
+      app.form.controls.startTime.setValue('08:00');
+      app.setAnimationsEnabled(backdropEnabled);
+      fixture!.detectChanges();
+      const page = fixture!.nativeElement as HTMLElement;
+      const panel = page.querySelector('.panel')!;
+      page.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      expect(app.isCompactMode()).toBeTrue();
+      expect(panel.hasAttribute('inert')).toBeTrue();
+      expect(page.querySelector('.view-morph-overlay')).not.toBeNull();
+      expect(contexts).not.toHaveBeenCalled();
+      const { duration, delay } = panel.getAnimations().find(animation => !(animation instanceof CSSTransition))!.effect!.getTiming();
+      const timing = [Number(duration), Number(delay)];
+      if (firstTiming) expect(timing).toEqual(firstTiming);
+      else firstTiming = timing;
+
+      await finishTransition(panel);
+      const result = page.querySelector('.result-block')!;
+      expect(document.activeElement).toBe(result);
+      expect(getComputedStyle(result).outlineStyle).toBe('none');
+      expect(contexts).not.toHaveBeenCalled();
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      expect(contexts.calls.count()).toBe(backdropEnabled ? 2 : 0);
+      app.editPlan();
+      await finishTransition(panel);
+      expect(document.activeElement).toBe(page.querySelector('#start-time'));
+      fixture!.destroy();
+      fixture = null;
+    }
   });
 
   it('switches immediately with reduced motion and cancels pending transitions on teardown', fakeAsync(() => {
@@ -775,7 +803,6 @@ describe('AppComponent', () => {
         for (const slider of [false, true]) {
           app.setSliderEnabled(slider);
           fixture!.detectChanges();
-          expect(page.classList.contains('simple-time-cards')).toBe(!animation);
           expect(page.querySelectorAll('app-liquid-backdrop').length).toBe(animation ? 2 : 0);
           expect(page.querySelectorAll('#exit-offset').length).toBe(slider ? 1 : 0);
           expect(page.querySelectorAll('.result-time-card').length).toBe(2);

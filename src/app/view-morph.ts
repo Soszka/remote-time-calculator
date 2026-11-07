@@ -59,10 +59,9 @@ export class ViewMorph {
         input.style.boxShadow = style.boxShadow;
       });
       clone.querySelectorAll('.button-ripple-layer').forEach(layer => layer.remove());
-      const originalCanvases = source.querySelectorAll<HTMLCanvasElement>('app-liquid-backdrop canvas');
-      clone.querySelectorAll<HTMLCanvasElement>('app-liquid-backdrop canvas').forEach((canvas, index) => {
-        originalCanvases[index].closest('app-liquid-backdrop')?.dispatchEvent(new CustomEvent('liquid-snapshot', { detail: canvas }));
-      });
+      // Use the same static clock face in either mode without reading pixels back from the GPU.
+      clone.querySelectorAll('app-liquid-backdrop').forEach(backdrop => backdrop.remove());
+      clone.querySelectorAll('.has-liquid-canvas').forEach(card => card.classList.remove('has-liquid-canvas'));
       return { node: clone, bounds: bounds(source) };
     });
     return { panel: panelBounds, outgoing };

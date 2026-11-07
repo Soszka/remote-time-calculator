@@ -158,6 +158,7 @@ export class LiquidFlowRenderer {
   private value: string;
   private lastFrame = 0;
   private nextDrawAt = 0;
+  private paused = false;
   private elapsed = 0;
   private visible = true;
   private targetDrift = [0, 0];
@@ -169,7 +170,7 @@ export class LiquidFlowRenderer {
   private ratio = 1;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly card: HTMLElement, variant: number,
-    initialValue = '', private active = true, private paused = false) {
+    initialValue = '', private active = true) {
     this.value = initialValue;
     const gl = canvas.getContext('webgl', {
       alpha: false, antialias: false, depth: false, failIfMajorPerformanceCaveat: true,
@@ -245,8 +246,7 @@ export class LiquidFlowRenderer {
     this.resize();
     if (this.disposed) return;
     // The cached surface gets one prepared frame, never a background RAF loop.
-    if (!this.active) this.draw(performance.now(), true);
-    card.classList.add('has-liquid-canvas');
+    if (!this.active) this.draw(true);
     this.syncMotion();
     // Angular finishes host bindings after child view initialization.
     queueMicrotask(this.refreshStyles);
@@ -256,7 +256,7 @@ export class LiquidFlowRenderer {
       const refreshNumerals = (): void => {
         if (!this.disposed) {
           this.maskDirty = true;
-          this.draw(performance.now(), !this.active);
+          this.draw(!this.active);
         }
       };
       const descriptor = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
@@ -270,7 +270,7 @@ export class LiquidFlowRenderer {
     if (this.disposed || this.value === value) return;
     this.value = value;
     this.maskDirty = true;
-    this.draw(performance.now());
+    this.draw();
   }
 
   setActive(active: boolean): void {
@@ -280,6 +280,7 @@ export class LiquidFlowRenderer {
       const box = this.card.getBoundingClientRect();
       this.visible = box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight
         && box.right > 0 && box.left < innerWidth;
+      this.resizeBuffers();
     }
     this.syncMotion();
   }
@@ -287,16 +288,9 @@ export class LiquidFlowRenderer {
   setPaused(paused: boolean): void {
     if (this.disposed || this.paused === paused) return;
     this.paused = paused;
+    if (paused) this.card.classList.remove('has-liquid-canvas');
+    else if (this.active) this.resizeBuffers();
     this.syncMotion();
-  }
-
-  copyFrame(target: HTMLCanvasElement): void {
-    if (this.disposed) return;
-    // Draw and copy in the same task, before WebGL discards its drawing buffer.
-    this.draw(performance.now());
-    target.width = this.canvas.width;
-    target.height = this.canvas.height;
-    target.getContext('2d')?.drawImage(this.canvas, 0, 0);
   }
 
   private location(name: string): WebGLUniformLocation {
@@ -320,12 +314,17 @@ export class LiquidFlowRenderer {
   }
 
   private readonly resize = (): void => {
-    if (this.disposed) return;
+    if (!this.active && this.framebufferReady) return;
+    if (this.resizeBuffers()) this.draw();
+  };
+
+  private resizeBuffers(): boolean {
+    if (this.disposed || this.paused) return false;
     const ratio = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
     const w = Math.max(1, Math.round(this.card.clientWidth * ratio));
     const h = Math.max(1, Math.round(this.card.clientHeight * ratio));
     // ResizeObserver's initial notification must not rebuild the same mask twice.
-    if (this.framebufferReady && this.canvas.width === w && this.canvas.height === h && this.ratio === ratio) return;
+    if (this.framebufferReady && this.canvas.width === w && this.canvas.height === h && this.ratio === ratio) return false;
     this.ratio = ratio;
     this.canvas.width = this.mask.width = this.softMask.width = w;
     this.canvas.height = this.mask.height = this.softMask.height = h;
@@ -342,12 +341,12 @@ export class LiquidFlowRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     if (!complete) {
       this.dispose();
-      return;
+      return false;
     }
     this.framebufferReady = true;
     this.maskDirty = true;
-    this.draw(performance.now());
-  };
+    return true;
+  }
 
   private paintMask(): void {
     const ctx = this.mask.getContext('2d', { willReadFrequently: true })!;
@@ -456,7 +455,7 @@ export class LiquidFlowRenderer {
       this.gl.uniform3f(this.location(uniform), rgb[0] / 255, rgb[1] / 255, rgb[2] / 255);
     }
     this.gl.uniform1f(this.location('dark'), root.classList.contains('dark-mode') ? 1 : 0);
-    this.draw(performance.now());
+    this.draw();
   };
 
   private readonly refreshStyles = (): void => {
@@ -473,8 +472,8 @@ export class LiquidFlowRenderer {
     }
   };
 
-  private draw(now: number, prepare = false): void {
-    if (this.disposed || (!prepare && (!this.active || !this.visible)) || document.hidden || !this.framebufferReady || this.gl.isContextLost()) return;
+  private draw(prepare = false): void {
+    if (this.disposed || this.paused || (!prepare && (!this.active || !this.visible)) || document.hidden || !this.framebufferReady || this.gl.isContextLost()) return;
     // Countdown changes in a paused card collapse into one upload on return.
     if (this.maskDirty) this.paintMask();
     if (!this.texturesReady) return;
@@ -491,6 +490,7 @@ export class LiquidFlowRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.liquidTexture);
     gl.uniform1f(this.location('renderPass'), 1);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+    if (!this.card.classList.contains('has-liquid-canvas')) this.card.classList.add('has-liquid-canvas');
   }
 
   private readonly tick = (now: number): void => {
@@ -504,7 +504,7 @@ export class LiquidFlowRenderer {
       this.lastFrame = now;
       const ease = 1 - Math.exp(-delta * 3.);
       for (let i = 0; i < 2; i++) this.drift[i] += (this.targetDrift[i] - this.drift[i]) * ease;
-      this.draw(now);
+      this.draw();
     }
     this.frame = requestAnimationFrame(this.tick);
   };
@@ -519,7 +519,7 @@ export class LiquidFlowRenderer {
     this.frame = null;
     this.lastFrame = performance.now();
     this.nextDrawAt = this.lastFrame + FRAME_INTERVAL;
-    this.draw(this.lastFrame);
+    this.draw();
     if (this.canRun()) this.frame = requestAnimationFrame(this.tick);
   };
 

@@ -157,10 +157,18 @@ describe('LiquidFlowRenderer lifecycle', () => {
 
     flow.setPaused(true);
     expect(frames.size).toBe(0);
+    expect(card.classList.contains('has-liquid-canvas')).toBeFalse();
+    const uploads = gl.texImage2D.calls.count();
     flow.setValue('15:28');
+    card.style.width = '140px';
+    resize([], resizeObserver);
     expect(frames.size).toBe(0);
+    expect(gl.drawArrays.calls.count()).toBe(draws + 2);
+    expect(gl.texImage2D.calls.count()).toBe(uploads);
     flow.setPaused(false);
     expect(frames.size).toBe(1);
+    expect(canvas.width).toBe(Math.round(140 * Math.min(devicePixelRatio, 1.25)));
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
   });
 
   it('uploads a new numeral mask only when the clock value changes', () => {
@@ -554,19 +562,6 @@ describe('LiquidFlowRenderer WebGL integration', () => {
       }
       expect(changed).withContext('The fluid must visibly deform within two seconds').toBeGreaterThan(canvas.width * canvas.height * .15);
       expect(gl.getError()).toBe(gl.NO_ERROR);
-      const frozen = document.createElement('canvas');
-      renderer.copyFrame(frozen);
-      expect([frozen.width, frozen.height]).toEqual([canvas.width, canvas.height]);
-      const snapshot = frozen.getContext('2d')!.getImageData(0, 0, frozen.width, frozen.height).data;
-      // Canvas2D's top-left origin is opposite to WebGL's readPixels origin.
-      for (const [x, y] of [[2, 2], [30, 20], [60, 40]]) {
-        const copied = (y * frozen.width + x) * 4;
-        const original = ((frozen.height - 1 - y) * frozen.width + x) * 4;
-        expect(snapshot[copied + 3]).toBe(255);
-        for (let channel = 0; channel < 3; channel++) {
-          expect(snapshot[copied + channel]).toBeCloseTo(after[original + channel], 0);
-        }
-      }
     } finally {
       renderer?.dispose();
       root.remove();

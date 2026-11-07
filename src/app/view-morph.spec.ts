@@ -20,9 +20,9 @@ describe('ViewMorph', () => {
       <div class="highlight-card" style="position:absolute;inset:0;display:block;margin:0;padding:0;border:0">
       <div class="compact-toolbar" style="height:40px">Start: 08:00 <button>Edytuj</button></div>
       <div class="summary-line result-summary">
-      <article class="exit-time-card" style="position:absolute;left:24px;top:90px;width:552px;height:140px"><canvas></canvas><span style="font-size:17cqi">16:15</span></article>
+      <article class="exit-time-card" style="position:absolute;left:24px;top:90px;width:552px;height:140px"><app-liquid-backdrop><canvas></canvas></app-liquid-backdrop><span style="font-size:17cqi">16:15</span></article>
       <div class="exit-slider" style="position:absolute;left:24px;top:250px;width:552px;height:60px"><button class="offset-button">-</button><div class="offset-control">Suwak</div><button class="offset-button">+</button></div>
-      <article class="remaining-time-card" style="position:absolute;left:24px;top:330px;width:552px;height:140px"><canvas></canvas></article>
+      <article class="remaining-time-card" style="position:absolute;left:24px;top:330px;width:552px;height:140px"><app-liquid-backdrop><canvas></canvas></app-liquid-backdrop></article>
       </div></div>`;
     host.append(panel);
     document.body.append(host);
@@ -106,7 +106,7 @@ describe('ViewMorph', () => {
     const overlay = host.querySelector('.view-morph-overlay')!;
     expect(overlay.getAttribute('aria-hidden')).toBe('true');
     expect(overlay.hasAttribute('inert')).toBeTrue();
-    expect(overlay.querySelectorAll('canvas').length).toBe(2);
+    expect(overlay.querySelector('canvas')).toBeNull();
     expect(overlay.querySelector('[id]')).toBeNull();
     const scale = overlay.querySelector('.offset-control')!;
     expect(scale.getAnimations().length).toBe(0);
