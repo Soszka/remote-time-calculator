@@ -17,10 +17,13 @@ describe('ViewMorph', () => {
     panel.className = 'panel';
     panel.style.cssText = 'position:relative;width:600px;height:620px;padding:0;margin:0;border:0;gap:0;';
     panel.innerHTML = `
+      <div class="highlight-card" style="position:absolute;inset:0;display:block;margin:0;padding:0;border:0">
       <div class="compact-toolbar" style="height:40px">Start: 08:00 <button>Edytuj</button></div>
-      <article class="exit-time-card" style="position:absolute;left:24px;top:90px;width:552px;height:140px"><canvas></canvas></article>
+      <div class="summary-line result-summary">
+      <article class="exit-time-card" style="position:absolute;left:24px;top:90px;width:552px;height:140px"><canvas></canvas><span style="font-size:17cqi">16:15</span></article>
       <div class="exit-slider" style="position:absolute;left:24px;top:250px;width:552px;height:60px"><button class="offset-button">-</button><div class="offset-control">Suwak</div><button class="offset-button">+</button></div>
-      <article class="remaining-time-card" style="position:absolute;left:24px;top:330px;width:552px;height:140px"><canvas></canvas></article>`;
+      <article class="remaining-time-card" style="position:absolute;left:24px;top:330px;width:552px;height:140px"><canvas></canvas></article>
+      </div></div>`;
     host.append(panel);
     document.body.append(host);
     motion = new ViewMorph(host);
@@ -54,12 +57,15 @@ describe('ViewMorph', () => {
     const cards = Array.from(panel.querySelectorAll<HTMLElement>('article'));
     const canvases = Array.from(panel.querySelectorAll('canvas'));
     const source = cards.map(coordinates);
+    const fontSize = getComputedStyle(cards[0].querySelector('span')!).fontSize;
     const snapshot = motion.capture('result');
     changeToForm();
     const target = coordinates(panel);
     motion.play(snapshot);
     const copies = Array.from(host.querySelectorAll<HTMLElement>('.view-morph-overlay article'));
     expect(copies.length).toBe(2);
+    expect(copies[0].closest('.result-summary')).not.toBeNull();
+    expect(getComputedStyle(copies[0].querySelector('span')!).fontSize).toBe(fontSize);
     const animations = host.getAnimations({ subtree: true });
     animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
     copies.forEach((card, index) => closeTo(coordinates(card), source[index]));

@@ -35,7 +35,9 @@ export class ButtonRippleDirective implements OnDestroy {
   }
 
   private ripple(clientX?: number, clientY?: number): void {
-    if (this.button.disabled || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (this.button.disabled || this.button.getAttribute('aria-disabled') === 'true' ||
+        this.button.closest('app-root.simple-time-cards') ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const rect = this.button.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     if (!this.layer) {

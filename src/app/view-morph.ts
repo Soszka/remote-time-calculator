@@ -10,7 +10,6 @@ export interface ViewMorphSnapshot {
 const ease = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const foldEase = 'cubic-bezier(0.55, 0, 1, 0.45)';
 export const ACCORDION_PHASES = { collapse: 200, expand: 360 } as const;
-export const VIEW_MORPH_MS = ACCORDION_PHASES.collapse + ACCORDION_PHASES.expand + 40;
 const bounds = (element: Element): Bounds => {
   const { x, y, width, height } = element.getBoundingClientRect();
   return { x, y, width, height };
@@ -38,12 +37,11 @@ export class ViewMorph {
     if (!panelBounds.width || !panelBounds.height) return null;
     const sources = Array.from(panel.querySelectorAll<HTMLElement>(mode === 'form'
       ? '.panel-header, .form > *'
-      : '.highlight-card, .compact-toolbar, .exit-time-card, .exit-slider, .remaining-time-card, .compact-feedback-box'));
+      : '.highlight-card'));
     // The form's own surface must fold together with its controls, not disappear at the click.
     if (mode === 'form') sources.unshift(panel);
     const outgoing = sources.map(source => {
-      const surface = source === panel || source.classList.contains('highlight-card');
-      const clone = source.cloneNode(!surface) as HTMLElement;
+      const clone = source.cloneNode(source !== panel) as HTMLElement;
       // Visual copies have neither duplicate IDs nor interactive/accessibility targets.
       for (const node of [clone, ...Array.from(clone.querySelectorAll<HTMLElement>('*'))]) {
         node.removeAttribute('id');
@@ -70,23 +68,24 @@ export class ViewMorph {
     return { panel: panelBounds, outgoing };
   }
 
-  play(snapshot: ViewMorphSnapshot | null): void {
-    if (!snapshot || this.media.matches || document.hidden || typeof this.host.animate !== 'function') return;
+  play(snapshot: ViewMorphSnapshot | null): Animation | null {
+    if (!snapshot || this.media.matches || document.hidden || typeof this.host.animate !== 'function') return null;
     const panel = this.host.querySelector<HTMLElement>('.panel');
-    if (!panel) return;
+    if (!panel) return null;
     // Measure before starting any animation, so intermediate transforms never feed layout.
     const target = bounds(panel);
-    if (!target.width || !target.height) return;
+    if (!target.width || !target.height) return null;
     const expandStart = ACCORDION_PHASES.collapse;
     const sx = snapshot.panel.width / target.width;
     const dx = snapshot.panel.x + snapshot.panel.width / 2 - target.x - target.width / 2;
     const dy = snapshot.panel.y + snapshot.panel.height / 2 - target.y - target.height / 2;
-    this.animate(panel, [
+    const incoming = this.animate(panel, [
       { transform: `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, 0)` },
       { transform: 'translate3d(0, 0, 0) scale(1, 1)' },
     ].map(frame => ({ ...frame, transformOrigin: 'center center' })), ACCORDION_PHASES.expand, expandStart);
 
     this.showOutgoing(snapshot);
+    return incoming;
   }
 
   cancel(): void {
@@ -125,11 +124,12 @@ export class ViewMorph {
       .map(frame => ({ ...frame, transformOrigin: 'center center' })), ACCORDION_PHASES.collapse, 0, foldEase);
   }
 
-  private animate(element: HTMLElement, frames: Keyframe[], duration: number, delay = 0, easing = ease): void {
+  private animate(element: HTMLElement, frames: Keyframe[], duration: number, delay = 0, easing = ease): Animation {
     const animation = element.animate(frames, { duration, delay, easing, fill: 'both' });
     this.animations.add(animation);
     // Keep final transforms until the coordinated cleanup, avoiding a premature
     // snap while the parent is still moving. Rejections from cancellation are expected.
     void animation.finished.catch(() => {});
+    return animation;
   }
 }

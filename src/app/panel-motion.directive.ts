@@ -32,6 +32,10 @@ export class PanelMotionDirective implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['panelMotionBorder'] && !this.panelMotionBorder) this.clearBorder();
+    // A closing row can still contribute to its group's height when its frame is disabled.
+    if (changes['panelMotionEnabled'] && !this.panelMotionEnabled && !changes['panelClosing']) {
+      this.animation?.finish();
+    }
     if (this.initialized && changes['panelClosing'] && this.panelMotionEnabled) {
       this.zone.runOutsideAngular(() => this.play(this.panelClosing));
     }

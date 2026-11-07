@@ -2234,7 +2234,7 @@ app-root.dark-mode .exit-slider {
 }
 
 .offset-button svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: square; pointer-events: none; }
-.offset-button:disabled { opacity: 0.35; cursor: default; }
+.offset-button[aria-disabled="true"] { opacity: 0.35; cursor: default; }
 .offset-button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .offset-control { position: relative; min-width: 0; height: 3.7rem; }
 .offset-scale { position: absolute; inset: 0 calc(var(--slider-thumb-size) / 2); pointer-events: none; }
@@ -2513,7 +2513,7 @@ app-root:is(.accent-black, .accent-white) .work-progress { --progress-center: va
 app-root:is(.accent-black, .accent-white) .work-progress span { box-shadow: inset 0 0 0 1px var(--mono-border); }
 
 @media (hover: hover) and (pointer: fine) {
-  .offset-button:not(:disabled):hover {
+  .offset-button:not([aria-disabled="true"]):hover {
     box-shadow: var(--control-shadow-hover);
   }
   .offset-control:has(.offset-range:hover) .offset-orb {
@@ -2585,13 +2585,13 @@ app-root:not(.dark-mode) .offset-orb::before {
   transition: opacity 200ms ease;
 }
 
-app-root:not(.dark-mode) button:not(:disabled):not(.active):focus-visible > .button-sheen::after,
+app-root:not(.dark-mode) button:not(:disabled):not([aria-disabled="true"]):not(.active):focus-visible > .button-sheen::after,
 app-root:not(.dark-mode) .offset-control:has(.offset-range:focus-visible) .offset-orb::before {
   opacity: 1;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  app-root button:not(:disabled):not(.active):hover > .button-sheen::after {
+  app-root button:not(:disabled):not([aria-disabled="true"]):not(.active):hover > .button-sheen::after {
     opacity: 1;
   }
   app-root:not(.dark-mode) .offset-control:has(.offset-range:hover) .offset-orb::before {
@@ -2599,13 +2599,13 @@ app-root:not(.dark-mode) .offset-control:has(.offset-range:focus-visible) .offse
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  app-root button:not(:disabled):not(.active):focus-visible > .button-sheen::before {
+  app-root button:not(:disabled):not([aria-disabled="true"]):not(.active):focus-visible > .button-sheen::before {
     animation: buttonSheen var(--button-sweep-duration) cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  app-root button:not(:disabled):not(.active):hover > .button-sheen::before,
-  app-root button:not(:disabled):not(.active):focus-visible > .button-sheen::before {
+  app-root button:not(:disabled):not([aria-disabled="true"]):not(.active):hover > .button-sheen::before,
+  app-root button:not(:disabled):not([aria-disabled="true"]):not(.active):focus-visible > .button-sheen::before {
     animation: buttonSheen var(--button-sweep-duration) cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 }
@@ -2668,7 +2668,7 @@ app-root .view-morph-overlay * {
   pointer-events: none !important;
 }
 
-.offset-button:not(:disabled):active { box-shadow: inset 0 2px 7px var(--accent-control-bg); }
+.offset-button:not([aria-disabled="true"]):active { box-shadow: inset 0 2px 7px var(--accent-control-bg); }
 
 @media (prefers-reduced-motion: reduce) {
   app-root .offset-button, app-root .offset-orb, app-root .edit-button, app-root .accent-swatch, app-root .favorite-hour-option { transition: none; }
@@ -2699,7 +2699,13 @@ app-root.simple-time-cards .result-time-value {
 }
 app-root.dark-mode.simple-time-cards .result-time-value { color: color-mix(in srgb, var(--control-ink) 90%, transparent); }
 app-root.simple-time-cards .result-time-label { text-shadow: none; }
-app-root.simple-time-cards .work-progress.in-progress::before { animation: none; }
+app-root.simple-time-cards *,
+app-root.simple-time-cards *::before,
+app-root.simple-time-cards *::after {
+  animation: none !important;
+  transition: none !important;
+}
+app-root.simple-time-cards .button-ripple-layer { display: none; }
 
 @media (max-width: 430px) {
   app-root .accent-picker {

@@ -135,6 +135,9 @@ void main() {
 }
 `;
 
+const MAX_PIXEL_RATIO = 1.25;
+const FRAME_INTERVAL = 1000 / 60;
+
 export class LiquidFlowRenderer {
   private readonly gl: WebGLRenderingContext;
   private readonly program: WebGLProgram;
@@ -154,6 +157,7 @@ export class LiquidFlowRenderer {
   private frame: number | null = null;
   private value: string;
   private lastFrame = 0;
+  private nextDrawAt = 0;
   private elapsed = 0;
   private visible = true;
   private targetDrift = [0, 0];
@@ -165,9 +169,11 @@ export class LiquidFlowRenderer {
   private ratio = 1;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly card: HTMLElement, variant: number,
-    initialValue = '', private active = true) {
+    initialValue = '', private active = true, private paused = false) {
     this.value = initialValue;
-    const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false });
+    const gl = canvas.getContext('webgl', {
+      alpha: false, antialias: false, depth: false, failIfMajorPerformanceCaveat: true,
+    });
     if (!gl) throw new Error('Liquid flow renderer unavailable');
     this.gl = gl;
     this.colorSample.width = this.colorSample.height = 1;
@@ -278,6 +284,12 @@ export class LiquidFlowRenderer {
     this.syncMotion();
   }
 
+  setPaused(paused: boolean): void {
+    if (this.disposed || this.paused === paused) return;
+    this.paused = paused;
+    this.syncMotion();
+  }
+
   copyFrame(target: HTMLCanvasElement): void {
     if (this.disposed) return;
     // Draw and copy in the same task, before WebGL discards its drawing buffer.
@@ -309,7 +321,7 @@ export class LiquidFlowRenderer {
 
   private readonly resize = (): void => {
     if (this.disposed) return;
-    const ratio = Math.min(devicePixelRatio || 1, 1.5);
+    const ratio = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
     const w = Math.max(1, Math.round(this.card.clientWidth * ratio));
     const h = Math.max(1, Math.round(this.card.clientHeight * ratio));
     // ResizeObserver's initial notification must not rebuild the same mask twice.
@@ -483,22 +495,32 @@ export class LiquidFlowRenderer {
 
   private readonly tick = (now: number): void => {
     this.frame = null;
-    if (this.disposed || !this.active || !this.visible || document.hidden || this.reducedMotion.matches) return;
-    const delta = Math.min(64, Math.max(0, now - this.lastFrame)) / 1000;
-    this.elapsed += delta;
-    this.lastFrame = now;
-    const ease = 1. - Math.exp(-delta * 3.);
-    for (let i = 0; i < 2; i++) this.drift[i] += (this.targetDrift[i] - this.drift[i]) * ease;
-    this.draw(now);
+    if (!this.canRun()) return;
+    // Allow 1 ms of timer jitter without dropping every other frame on a 60 Hz display.
+    if (now + 1 >= this.nextDrawAt) {
+      this.nextDrawAt = Math.max(this.nextDrawAt + FRAME_INTERVAL, now);
+      const delta = Math.min(64, Math.max(0, now - this.lastFrame)) / 1000;
+      this.elapsed += delta;
+      this.lastFrame = now;
+      const ease = 1 - Math.exp(-delta * 3.);
+      for (let i = 0; i < 2; i++) this.drift[i] += (this.targetDrift[i] - this.drift[i]) * ease;
+      this.draw(now);
+    }
     this.frame = requestAnimationFrame(this.tick);
   };
+
+  private canRun(): boolean {
+    return !this.disposed && this.active && !this.paused && this.visible &&
+      !document.hidden && !this.reducedMotion.matches;
+  }
 
   private readonly syncMotion = (): void => {
     if (this.frame !== null) cancelAnimationFrame(this.frame);
     this.frame = null;
     this.lastFrame = performance.now();
-    this.draw(performance.now());
-    if (!this.disposed && this.active && this.visible && !document.hidden && !this.reducedMotion.matches) this.frame = requestAnimationFrame(this.tick);
+    this.nextDrawAt = this.lastFrame + FRAME_INTERVAL;
+    this.draw(this.lastFrame);
+    if (this.canRun()) this.frame = requestAnimationFrame(this.tick);
   };
 
   private readonly orientation = (event: DeviceOrientationEvent): void => {

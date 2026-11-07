@@ -4,6 +4,7 @@
     [class.compact-panel]="isCompactMode()"
     [class.switching-to-result]="isSwitchingToResult()"
     [class.switching-to-form]="isSwitchingToForm()"
+    [attr.inert]="isSwitchingToResult() || isSwitchingToForm() ? '' : null"
   >
     <header class="panel-header" *ngIf="!isCompactMode()">
       <h1>Kalkulator końca pracy</h1>
@@ -24,11 +25,13 @@
       class="form"
       *ngIf="!isCompactMode()"
       [formGroup]="form"
+      (ngSubmit)="calculate()"
       novalidate
     >
       <div class="form-row">
         <label for="start-time">Start pracy</label>
         <input
+          #startTimeField
           id="start-time"
           type="text"
           inputmode="text"
@@ -87,6 +90,7 @@
       </div>
 
       <div class="dynamic-panel-frame" appPanelMotion formArrayName="breaks" *ngIf="breaks.length > 0"
+        [panelMotionEnabled]="settings().animationsEnabled"
         [panelMotionBorder]="breaks.length === 1"
         [panelOpening]="!isSwitchingToForm() && isBreakHighlighted(breaks.at(0))"
         [panelClosing]="isBreakGroupRemoving()">
@@ -101,7 +105,7 @@
               let i = index;
               trackBy: trackByBreakControl
             "
-            [panelMotionEnabled]="breaks.length > 1"
+            [panelMotionEnabled]="settings().animationsEnabled && breaks.length > 1"
             [panelMotionBorder]="breaks.length > 1"
             [panelOpening]="!isSwitchingToForm() && isBreakHighlighted(breakGroup)"
             [panelClosing]="breaks.length > 1 && isBreakRemoving(breakGroup)"
@@ -179,6 +183,7 @@
 
       <div
         class="dynamic-panel-frame" appPanelMotion
+        [panelMotionEnabled]="settings().animationsEnabled"
         [panelMotionBorder]="true"
         [panelOpening]="!isSwitchingToForm() && (isAdjustmentHighlighted('overtimePickup') || isAdjustmentHighlighted('undertimeMakeup'))"
         [panelClosing]="isAdjustmentRemoving('overtimePickup') || isAdjustmentRemoving('undertimeMakeup')"
@@ -317,9 +322,8 @@
       </div>
 
       <button
-        type="button"
+        type="submit"
         class="primary-button"
-        (click)="calculate()"
         [disabled]="!canCalculate || isSwitchingToResult()"
       ><span class="button-sheen" aria-hidden="true"></span>
         <span>Przelicz</span>
@@ -330,7 +334,8 @@
       </div>
     </form>
 
-    <section *ngIf="resultSurface() as payload" class="result-block"
+    <section *ngIf="resultSurface() as payload" class="result-block" #resultHeading tabindex="-1"
+      [attr.aria-label]="'Wynik. Wyjście o ' + payload.endTime"
       [class.result-cache]="!isCompactMode()"
       [attr.aria-hidden]="!isCompactMode() ? 'true' : null"
       [attr.inert]="!isCompactMode() ? '' : null"
@@ -416,7 +421,8 @@
         </div>
         <div class="summary-line result-summary">
           <article class="summary-item result-time-card exit-time-card">
-            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime" [active]="isCompactMode()"></app-liquid-backdrop>
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime"
+              [active]="isCompactMode()" [motionPaused]="isSwitchingToResult()"></app-liquid-backdrop>
             <span class="result-time-label">Wyjście</span>
             <strong class="result-time-value" [appTimeValue]="payload.endTime"></strong>
           </article>
@@ -426,7 +432,7 @@
               type="button"
               class="offset-button"
               aria-label="Przesuń wyjście o minutę wcześniej"
-              [disabled]="exitOffsetMinutes() === -flexMinutes"
+              [attr.aria-disabled]="exitOffsetMinutes() === -flexMinutes ? 'true' : null"
               (click)="adjustExitOffset(-1)"
             ><span class="button-sheen" aria-hidden="true"></span>
               <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -462,7 +468,7 @@
               type="button"
               class="offset-button"
               aria-label="Przesuń wyjście o minutę później"
-              [disabled]="exitOffsetMinutes() === flexMinutes"
+              [attr.aria-disabled]="exitOffsetMinutes() === flexMinutes ? 'true' : null"
               (click)="adjustExitOffset(1)"
             ><span class="button-sheen" aria-hidden="true"></span>
               <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -472,7 +478,8 @@
           </div>
 
           <article class="summary-item result-time-card remaining-time-card">
-            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="payload.remainingClockLabel" [active]="isCompactMode()"></app-liquid-backdrop>
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="payload.remainingClockLabel"
+              [active]="isCompactMode()" [motionPaused]="isSwitchingToResult()"></app-liquid-backdrop>
             <span class="result-time-label">Czas</span>
             <strong class="result-time-value" [appTimeValue]="payload.remainingClockLabel"></strong>
           </article>
@@ -560,17 +567,21 @@
 
         <div class="config-row">
           <span id="slider-display-label" class="config-label">Wyświetlanie suwaka</span>
-          <div class="title-segment" role="radiogroup" aria-labelledby="slider-display-label">
-            <button type="button" role="radio" [class.active]="settings().sliderEnabled" [attr.aria-checked]="settings().sliderEnabled" (click)="setSliderEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
-            <button type="button" role="radio" [class.active]="!settings().sliderEnabled" [attr.aria-checked]="!settings().sliderEnabled" (click)="setSliderEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
+          <div class="title-segment" role="radiogroup" aria-labelledby="slider-display-label" (keydown)="onBinarySettingKeydown($event)">
+            <button type="button" role="radio" [class.active]="settings().sliderEnabled" [attr.aria-checked]="settings().sliderEnabled"
+              [tabIndex]="settings().sliderEnabled ? 0 : -1" (click)="setSliderEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
+            <button type="button" role="radio" [class.active]="!settings().sliderEnabled" [attr.aria-checked]="!settings().sliderEnabled"
+              [tabIndex]="settings().sliderEnabled ? -1 : 0" (click)="setSliderEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
           </div>
         </div>
 
         <div class="config-row">
           <span id="animations-display-label" class="config-label">Wyświetlanie animacji</span>
-          <div class="title-segment" role="radiogroup" aria-labelledby="animations-display-label">
-            <button type="button" role="radio" [class.active]="settings().animationsEnabled" [attr.aria-checked]="settings().animationsEnabled" (click)="setAnimationsEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
-            <button type="button" role="radio" [class.active]="!settings().animationsEnabled" [attr.aria-checked]="!settings().animationsEnabled" (click)="setAnimationsEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
+          <div class="title-segment" role="radiogroup" aria-labelledby="animations-display-label" (keydown)="onBinarySettingKeydown($event)">
+            <button type="button" role="radio" [class.active]="settings().animationsEnabled" [attr.aria-checked]="settings().animationsEnabled"
+              [tabIndex]="settings().animationsEnabled ? 0 : -1" (click)="setAnimationsEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
+            <button type="button" role="radio" [class.active]="!settings().animationsEnabled" [attr.aria-checked]="!settings().animationsEnabled"
+              [tabIndex]="settings().animationsEnabled ? -1 : 0" (click)="setAnimationsEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
           </div>
         </div>
 

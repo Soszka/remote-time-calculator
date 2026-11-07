@@ -101,29 +101,38 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it('keeps the two views separate, ignores duplicate clicks and preserves the prepared clocks and form values on reversal', fakeAsync(() => {
+  it('keeps the two views separate, ignores duplicate clicks and preserves the prepared clocks and form values on reversal', async () => {
     spyOn(window, 'matchMedia').and.returnValue({ matches: false } as MediaQueryList);
+    spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
     const app = createApp();
-    app.setAnimationsEnabled(false);
     app.form.controls.startTime.setValue('08:00');
     fixture!.detectChanges();
+    const page = fixture!.nativeElement as HTMLElement;
+    const panel = page.querySelector('.panel')!;
+    const finishTransition = async (): Promise<void> => {
+      const animation = panel.getAnimations().find(animation => !(animation instanceof CSSTransition))!;
+      const finished = animation.finished;
+      animation.finish();
+      await finished;
+    };
     app.calculate();
     expect(app.isSwitchingToResult()).toBeTrue();
     expect(app.isCompactMode()).toBeTrue();
+    expect(panel.hasAttribute('inert')).toBeTrue();
     const clock = fixture!.nativeElement.querySelector('.exit-time-card');
     const departing = fixture!.nativeElement.querySelector('.view-morph-overlay');
     expect(departing.getAttribute('aria-hidden')).toBe('true');
     expect(departing.hasAttribute('inert')).toBeTrue();
     expect(departing.querySelector('[id]')).toBeNull();
-    tick(120);
     app.calculate();
-    tick(100);
     fixture!.detectChanges();
     expect(app.isCompactMode()).toBeTrue();
     expect(app.result()?.endTime).toBe('16:15');
     expect(fixture!.nativeElement.querySelector('.result-reveal')).not.toBeNull();
-    tick(900);
+    await finishTransition();
     expect(app.isResultRevealing()).toBeFalse();
+    expect(panel.hasAttribute('inert')).toBeFalse();
+    expect(document.activeElement).toBe(page.querySelector('.result-block'));
     app.editPlan();
     fixture!.detectChanges();
     expect(app.isSwitchingToForm()).toBeTrue();
@@ -136,26 +145,39 @@ describe('AppComponent', () => {
     expect(fixture!.nativeElement.querySelector('.message-card')).toBeNull();
     expect(fixture!.nativeElement.querySelector('.view-morph-overlay .exit-time-card')).not.toBeNull();
     expect(fixture!.nativeElement.querySelector('#start-time')).not.toBeNull();
-    tick(120);
     app.editPlan();
-    tick(100);
     fixture!.detectChanges();
     expect(app.isCompactMode()).toBeFalse();
     expect(app.form.controls.startTime.value).toBe('08:00');
     expect(fixture!.nativeElement.querySelector('#start-time')).not.toBeNull();
-    tick(900);
+    await finishTransition();
     expect(fixture!.nativeElement.querySelector('.view-morph-overlay')).toBeNull();
     expect(getComputedStyle(clock).visibility).toBe('hidden');
+    expect(document.activeElement).toBe(page.querySelector('#start-time'));
     app.calculate();
-    tick(220);
     fixture!.detectChanges();
     expect(fixture!.nativeElement.querySelector('.result-reveal')).not.toBeNull();
     expect(fixture!.nativeElement.querySelector('.result-cache')).toBeNull();
     expect(fixture!.nativeElement.querySelector('#start-time')).toBeNull();
-    tick(900);
+    await finishTransition();
     fixture!.destroy();
     fixture = null;
-  }));
+  });
+
+  it('handles form submit and returns focus without motion when animations are disabled', () => {
+    const app = createApp();
+    app.setAnimationsEnabled(false);
+    app.form.controls.startTime.setValue('08:00');
+    fixture!.detectChanges();
+    const page = fixture!.nativeElement as HTMLElement;
+    page.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(app.isCompactMode()).toBeTrue();
+    expect(page.querySelector('.panel')!.hasAttribute('inert')).toBeFalse();
+    expect(page.querySelector('.view-morph-overlay')).toBeNull();
+    expect(document.activeElement).toBe(page.querySelector('.result-block'));
+    app.editPlan();
+    expect(document.activeElement).toBe(page.querySelector('#start-time'));
+  });
 
   it('switches immediately with reduced motion and cancels pending transitions on teardown', fakeAsync(() => {
     const media = { matches: true } as MediaQueryList;
@@ -630,16 +652,18 @@ describe('AppComponent', () => {
     fixture!.detectChanges();
     expect(app.exitOffsetMinutes()).toBe(-15);
     expect(app.result()?.endTime).toBe('16:00');
-    expect(buttons[0].disabled).toBeTrue();
-    app.adjustExitOffset(-1);
+    expect(buttons[0].getAttribute('aria-disabled')).toBe('true');
+    buttons[0].focus();
+    buttons[0].click();
     expect(app.exitOffsetMinutes()).toBe(-15);
+    expect(document.activeElement).toBe(buttons[0]);
 
     app.setExitOffset(100);
     fixture!.detectChanges();
     expect(app.exitOffsetMinutes()).toBe(15);
     expect(app.result()?.endTime).toBe('16:30');
-    expect(buttons[1].disabled).toBeTrue();
-    app.adjustExitOffset(1);
+    expect(buttons[1].getAttribute('aria-disabled')).toBe('true');
+    buttons[1].click();
     expect(app.exitOffsetMinutes()).toBe(15);
 
     app.setExitOffset(Number.NaN);
@@ -776,9 +800,15 @@ describe('AppComponent', () => {
     expect(page.querySelector('#remaining-time-display-label')).toBeNull();
     const animationOptions = page.querySelectorAll<HTMLButtonElement>('[aria-labelledby="animations-display-label"] button');
     const sliderOptions = page.querySelectorAll<HTMLButtonElement>('[aria-labelledby="slider-display-label"] button');
-    animationOptions[1].click();
+    expect(animationOptions[0].tabIndex).toBe(0);
+    expect(animationOptions[1].tabIndex).toBe(-1);
+    animationOptions[0].focus();
+    animationOptions[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     fixture!.detectChanges();
     expect(animationOptions[1].getAttribute('aria-checked')).toBe('true');
+    expect(animationOptions[1].tabIndex).toBe(0);
+    expect(animationOptions[0].tabIndex).toBe(-1);
+    expect(document.activeElement).toBe(animationOptions[1]);
     expect(sliderOptions[0].getAttribute('aria-checked')).toBe('true');
     sliderOptions[1].click();
     fixture!.detectChanges();
@@ -1163,6 +1193,8 @@ describe('AppComponent', () => {
     calculate(app);
     expect(app.result()?.endTime).toBe('16:15');
     expect(JSON.parse(localStorage.getItem('workEndCalculator.dailyPlan')!).breaks).toEqual([]);
+    fixture!.destroy();
+    fixture = null;
   }));
 
   for (const kind of ['overtimePickup', 'undertimeMakeup'] as const) {
@@ -1181,6 +1213,8 @@ describe('AppComponent', () => {
       expect(app.result()?.endTime).toBe('16:15');
       expect(app.result()?.adjustmentLabel).toBeNull();
       expect(JSON.parse(localStorage.getItem('workEndCalculator.dailyPlan')!).adjustmentPanels[kind]).toBeFalse();
+      fixture!.destroy();
+      fixture = null;
     }));
   }
 
@@ -1201,6 +1235,8 @@ describe('AppComponent', () => {
     expect(app.canCalculate).toBeTrue();
     calculate(app);
     expect(app.result()?.endTime).toBe('16:15');
+    fixture!.destroy();
+    fixture = null;
   }));
 
   it('preserves the 8h 15min rule for every permitted unadjusted start minute and rejects the first minute beyond 21:00', () => {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, NgZone, OnDestroy, computed, effect, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, NgZone, OnDestroy, ViewChild, computed, effect, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -14,7 +14,7 @@ import { Title } from '@angular/platform-browser';
 import { LiquidBackdropComponent } from './liquid-backdrop.component';
 import { ButtonRippleDirective } from './button-ripple.directive';
 import { TimeValueComponent } from './time-value.component';
-import { VIEW_MORPH_MS, ViewMorph, ViewMorphSnapshot } from './view-morph';
+import { ViewMorph, ViewMorphSnapshot } from './view-morph';
 import { PANEL_MOTION, PanelMotionDirective } from './panel-motion.directive';
 interface BreakFormGroup extends FormGroup<{
   start: FormControl<string | null>;
@@ -507,7 +507,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
-  private resultTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
+  @ViewChild('startTimeField') private startTimeField?: ElementRef<HTMLInputElement>;
+  @ViewChild('resultHeading') private resultHeading?: ElementRef<HTMLElement>;
+
+  private resultTransition: Animation | null = null;
   private readonly viewMorph: ViewMorph;
   private warmupIdle: number | null = null;
   private warmupTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -639,7 +642,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       const prepare = (): void => {
         this.warmupIdle = null;
         this.warmupTimeout = null;
-        if (this.result() || !this.settings().animationsEnabled || document.hidden) return;
+        if (this.result() || !this.canAnimate()) return;
         this.zone.run(() => {
           this.surfacePrepared.set(true);
           this.changeDetector.detectChanges();
@@ -751,6 +754,17 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.configForm.controls.animationsEnabled.setValue(enabled);
   }
 
+  onBinarySettingKeydown(event: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    const option = event.target as HTMLButtonElement;
+    const other = option.nextElementSibling ?? option.previousElementSibling;
+    if (!(other instanceof HTMLButtonElement)) return;
+
+    event.preventDefault();
+    other.click();
+    other.focus();
+  }
+
   addBreak(): void {
     this.scheduleError.set(null);
     const breakGroup = this.createBreakGroup();
@@ -823,12 +837,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   editPlan(useTransition = true): void {
-    if (useTransition && this.isSwitchingToForm()) return;
-    const animate = useTransition && this.isCompactMode() && !this.prefersReducedMotion();
-    const snapshot = animate ? this.viewMorph.capture('result') : null;
+    if (useTransition && (this.isSwitchingToForm() || this.isSwitchingToResult())) return;
+    const snapshot = useTransition && this.isCompactMode() && this.canAnimate()
+      ? this.viewMorph.capture('result') : null;
     this.clearResultTransition();
     this.isCompactMode.set(false);
-    if (animate) this.startViewMorph(snapshot, 'form');
+    if (useTransition) this.changeView(snapshot, 'form');
   }
 
   onExitOffsetInput(event: Event): void {
@@ -902,15 +916,14 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   calculate(useTransition = true): void {
-    if (useTransition && this.isSwitchingToResult()) return;
+    if (useTransition && (this.isSwitchingToResult() || this.isSwitchingToForm())) return;
     if (!this.canCalculate) {
       this.form.markAllAsTouched();
       this.breaks.controls.forEach((group) => group.markAllAsTouched());
       return;
     }
 
-    const animate = useTransition && !this.isCompactMode() && !this.prefersReducedMotion();
-    const snapshot = animate ? this.viewMorph.capture('form') : null;
+    const openingResult = useTransition && !this.isCompactMode();
     this.clearDynamicCardHighlights();
     this.clearResultTransition();
     this.clearCountdown();
@@ -935,6 +948,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     }
 
     this.scheduleError.set(null);
+    const snapshot = openingResult && this.canAnimate() ? this.viewMorph.capture('form') : null;
 
     const rawEndMinutes = scheduleCheck.totalEndMinutes;
     const totalMinutes = ((rawEndMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
@@ -990,7 +1004,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       this.result.set(nextResult);
       this.isCompactMode.set(true);
       this.isSwitchingToResult.set(false);
-      this.resultTransitionTimeout = null;
 
       this.messageContext = nextMessageContext;
       this.saveDailyPlan();
@@ -1002,7 +1015,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     };
 
     showResult();
-    if (animate) this.startViewMorph(snapshot, 'result');
+    if (openingResult) this.changeView(snapshot, 'result');
   }
 
   trackByIndex(_index: number, _item: unknown): number {
@@ -1462,6 +1475,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     };
     this.settings.set(nextSettings);
     this.saveSettings(nextSettings);
+    if (kind === 'animationsEnabled' && !enabled) this.viewMorph.cancel();
   }
 
   private syncDocumentTitle(
@@ -1766,38 +1780,51 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private clearResultTransition(): void {
-    if (this.resultTransitionTimeout !== null) {
-      clearTimeout(this.resultTransitionTimeout);
-      this.resultTransitionTimeout = null;
-    }
-
+    this.resultTransition = null;
     this.isSwitchingToResult.set(false);
     this.isSwitchingToForm.set(false);
     this.isResultRevealing.set(false);
     this.viewMorph.cancel();
   }
 
-  private startViewMorph(snapshot: ViewMorphSnapshot | null, mode: 'form' | 'result'): void {
+  private changeView(snapshot: ViewMorphSnapshot | null, mode: 'form' | 'result'): void {
+    if (!snapshot) {
+      this.focusView(mode);
+      return;
+    }
+
     this.isSwitchingToResult.set(mode === 'result');
     this.isSwitchingToForm.set(mode === 'form');
     this.isResultRevealing.set(mode === 'result');
     this.changeDetector.detectChanges();
-    this.zone.runOutsideAngular(() => this.viewMorph.play(snapshot));
-    this.resultTransitionTimeout = setTimeout(() => {
-      this.viewMorph.cancel();
-      this.isSwitchingToResult.set(false);
-      this.isSwitchingToForm.set(false);
-      this.isResultRevealing.set(false);
-      this.resultTransitionTimeout = null;
-    }, VIEW_MORPH_MS);
+    this.zone.runOutsideAngular(() => {
+      const animation = this.viewMorph.play(snapshot);
+      this.resultTransition = animation;
+      const settle = (): void => {
+        if (this.resultTransition !== animation) return;
+        this.zone.run(() => {
+          this.clearResultTransition();
+          this.focusView(mode);
+        });
+      };
+      if (animation) void animation.finished.then(settle, settle);
+      else settle();
+    });
   }
 
-  private prefersReducedMotion(): boolean {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private focusView(mode: 'form' | 'result'): void {
+    this.changeDetector.detectChanges();
+    const target = mode === 'result' ? this.resultHeading : this.startTimeField;
+    target?.nativeElement.focus();
+  }
+
+  private canAnimate(): boolean {
+    return this.settings().animationsEnabled && !document.hidden &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   private queueDynamicCardRemoval(callback: () => void): void {
-    if (this.prefersReducedMotion()) {
+    if (!this.canAnimate()) {
       callback();
       return;
     }

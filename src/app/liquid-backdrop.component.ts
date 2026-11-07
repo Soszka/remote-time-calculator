@@ -14,6 +14,7 @@ export class LiquidBackdropComponent implements AfterViewInit, OnChanges, OnDest
   @Input() variant: 'exit' | 'remaining' = 'exit';
   @Input() value = '';
   @Input() active = true;
+  @Input() motionPaused = false;
   @ViewChild('flowCanvas', { static: true }) private flowCanvas!: ElementRef<HTMLCanvasElement>;
   private renderer?: LiquidFlowRenderer;
 
@@ -24,7 +25,8 @@ export class LiquidBackdropComponent implements AfterViewInit, OnChanges, OnDest
       const card = this.element.nativeElement.parentElement;
       if (!card) return;
       try {
-        this.renderer = new LiquidFlowRenderer(this.flowCanvas.nativeElement, card, this.variant === 'remaining' ? 1 : 0, this.value, this.active);
+        this.renderer = new LiquidFlowRenderer(this.flowCanvas.nativeElement, card, this.variant === 'remaining' ? 1 : 0,
+          this.value, this.active, this.motionPaused);
       } catch {
         // The semantic HTML clock and CSS backdrop remain visible without WebGL.
         card.classList.remove('has-liquid-canvas');
@@ -34,6 +36,7 @@ export class LiquidBackdropComponent implements AfterViewInit, OnChanges, OnDest
 
   ngOnChanges(): void {
     this.renderer?.setValue(this.value);
+    this.renderer?.setPaused(this.motionPaused);
     this.renderer?.setActive(this.active);
   }
 

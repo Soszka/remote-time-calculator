@@ -147,6 +147,22 @@ describe('LiquidFlowRenderer lifecycle', () => {
     expect(frames.size).toBe(1);
   });
 
+  it('limits rendering on fast displays and pauses frames during the view transition', () => {
+    const flow = create();
+    const draws = gl.drawArrays.calls.count();
+    advanceFrame(1000 / 120);
+    expect(gl.drawArrays.calls.count()).toBe(draws);
+    advanceFrame(1000 / 120);
+    expect(gl.drawArrays.calls.count()).toBe(draws + 2);
+
+    flow.setPaused(true);
+    expect(frames.size).toBe(0);
+    flow.setValue('15:28');
+    expect(frames.size).toBe(0);
+    flow.setPaused(false);
+    expect(frames.size).toBe(1);
+  });
+
   it('uploads a new numeral mask only when the clock value changes', () => {
     const flow = create();
     const uploads = gl.texImage2D.calls.count();
