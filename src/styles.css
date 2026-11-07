@@ -1081,6 +1081,10 @@ app-root .adjustment-row.dynamic-card-leaving::after {
   transform-origin: center top;
 }
 
+.result-block:focus {
+  outline: none;
+}
+
 .card {
   background: #fff;
   border-radius: 24px;
@@ -1862,7 +1866,11 @@ app-root.dark-mode .message-card {
   pointer-events: none;
 }
 
-.work-progress.in-progress::before { animation: progressOrbit 2.4s linear infinite; }
+@media (prefers-reduced-motion: no-preference) {
+  .result-block:not(.result-cache) .work-progress.in-progress::before {
+    animation: progressOrbit 2.4s linear infinite;
+  }
+}
 
 .work-progress.complete::before {
   background: conic-gradient(from -90deg, var(--accent-solid), var(--accent-gradient-end), var(--accent-solid));
@@ -1889,10 +1897,6 @@ app-root.dark-mode .work-progress {
 
 @keyframes progressOrbit {
   to { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .work-progress.in-progress::before { animation: none; }
 }
 
 app-root:not(.dark-mode) .highlight-card {
@@ -2700,7 +2704,7 @@ app-root.simple-time-cards .result-time-value {
 app-root.dark-mode.simple-time-cards .result-time-value { color: color-mix(in srgb, var(--control-ink) 90%, transparent); }
 app-root.simple-time-cards .result-time-label { text-shadow: none; }
 app-root.simple-time-cards *,
-app-root.simple-time-cards *::before,
+app-root.simple-time-cards :not(.work-progress)::before,
 app-root.simple-time-cards *::after {
   animation: none !important;
   transition: none !important;

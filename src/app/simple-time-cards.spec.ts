@@ -10,6 +10,33 @@ import { PANEL_MOTION } from './panel-motion.directive';
 class AppHostComponent {}
 
 describe('Simple time cards', () => {
+  it('uses the same progress ring animation with and without animated clocks', () => {
+    localStorage.clear();
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date(2026, 9, 10, 12, 0));
+    spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
+    TestBed.configureTestingModule({ imports: [AppHostComponent] });
+    const fixture = TestBed.createComponent(AppHostComponent);
+    try {
+      const app = fixture.debugElement.query(By.directive(AppComponent)).componentInstance as AppComponent;
+      app.form.controls.startTime.setValue('08:00');
+      app.calculate(false);
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      for (const enabled of [true, false]) {
+        app.setAnimationsEnabled(enabled);
+        fixture.detectChanges();
+        const ring = fixture.nativeElement.querySelector('.work-progress.in-progress') as HTMLElement;
+        const orbit = getComputedStyle(ring, '::before');
+        expect(orbit.animationName).toBe(reducedMotion ? 'none' : 'progressOrbit');
+        expect(orbit.animationDuration).toBe(reducedMotion ? '0s' : '2.4s');
+      }
+    } finally {
+      fixture.destroy();
+      jasmine.clock().uninstall();
+      localStorage.clear();
+    }
+  });
+
   function channels(css: string): { rgb: number[]; alpha: number } {
     const values = css.match(/[\d.]+/g)!.map(Number);
     return {

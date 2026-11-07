@@ -174,7 +174,9 @@ describe('AppComponent', () => {
     expect(app.isCompactMode()).toBeTrue();
     expect(page.querySelector('.panel')!.hasAttribute('inert')).toBeFalse();
     expect(page.querySelector('.view-morph-overlay')).toBeNull();
-    expect(document.activeElement).toBe(page.querySelector('.result-block'));
+    const result = page.querySelector('.result-block')!;
+    expect(document.activeElement).toBe(result);
+    expect(getComputedStyle(result).outlineStyle).toBe('none');
     app.editPlan();
     expect(document.activeElement).toBe(page.querySelector('#start-time'));
   });
