@@ -1,4 +1,4 @@
-import { glyphInteriorDistance } from './liquid-distance-field';
+import { GlassMaskProcessor } from './glass-mask-processor';
 import { TIME_COLON_GAP_EM, TIME_COLON_OFFSET_EM } from './time-typography';
 import { GlassAnimation } from './card-animation';
 
@@ -189,11 +189,11 @@ void main() {
 export class LiquidFlowRenderer {
   private readonly gl: WebGLRenderingContext;
   private readonly program: WebGLProgram;
-  private readonly buffer: WebGLBuffer;
-  private readonly glyphTexture: WebGLTexture;
-  private readonly bevelTexture: WebGLTexture;
-  private readonly liquidTexture: WebGLTexture;
-  private readonly liquidFramebuffer: WebGLFramebuffer;
+  private buffer!: WebGLBuffer;
+  private glyphTexture!: WebGLTexture;
+  private bevelTexture!: WebGLTexture;
+  private liquidTexture!: WebGLTexture;
+  private liquidFramebuffer!: WebGLFramebuffer;
   private readonly mask = document.createElement('canvas');
   private readonly softMask = document.createElement('canvas');
   private readonly colorSample = document.createElement('canvas');
@@ -214,10 +214,35 @@ export class LiquidFlowRenderer {
   private framebufferReady = false;
   private maskDirty = true;
   private ratio = 1;
+  private initialized = false;
+  private initializationTimer?: ReturnType<typeof setTimeout>;
+  private initializationIdle?: number;
+  private completeInitialization!: () => void;
+  private readonly initialization = new Promise<void>(resolve => this.completeInitialization = resolve);
+  private maskProcessor?: GlassMaskProcessor;
+  private maskRevision = 0;
+  private maskCompletion = Promise.resolve();
+  private completeMask?: () => void;
+  private effect: GlassAnimation;
+
+  /** Resolves after the currently requested clock frame is ready (also on teardown/fallback). */
+  get ready(): Promise<void> { return this.waitForFrame(); }
+
+  private async waitForFrame(): Promise<void> {
+    await this.initialization;
+    while (!this.disposed) {
+      this.draw(performance.now(), true);
+      const revision = this.maskRevision;
+      await this.maskCompletion;
+      if (revision === this.maskRevision && !this.maskDirty) return;
+      if (this.maskDirty) await new Promise<void>(resolve => setTimeout(resolve, 16));
+    }
+  }
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly card: HTMLElement, variant: number,
     initialValue = '', private active = true, effect: GlassAnimation = 'liquid') {
     this.value = initialValue;
+    this.effect = effect;
     const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false });
     if (!gl) throw new Error('Liquid flow renderer unavailable');
     this.gl = gl;
@@ -227,49 +252,13 @@ export class LiquidFlowRenderer {
     this.program = program;
     for (const [type, source] of [[gl.VERTEX_SHADER, vertexSource], [gl.FRAGMENT_SHADER, fragmentSource]] as const) {
       const shader = gl.createShader(type)!;
+      if (!shader) { gl.deleteProgram(program); throw new Error('Unable to create liquid shader'); }
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        const error = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        gl.deleteProgram(program);
-        throw new Error(error || 'Liquid flow shader failed');
-      }
       gl.attachShader(program, shader);
       gl.deleteShader(shader);
     }
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      const error = gl.getProgramInfoLog(program);
-      gl.deleteProgram(program);
-      throw new Error(error || 'Liquid flow link failed');
-    }
-    gl.useProgram(program);
-    this.buffer = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    const position = gl.getAttribLocation(program, 'position');
-    gl.enableVertexAttribArray(position);
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-    this.glyphTexture = this.createTexture(0);
-    this.bevelTexture = this.createTexture(1);
-    this.liquidTexture = this.createTexture(2);
-    const framebuffer = gl.createFramebuffer();
-    if (!framebuffer) {
-      gl.deleteTexture(this.glyphTexture);
-      gl.deleteTexture(this.bevelTexture);
-      gl.deleteTexture(this.liquidTexture);
-      gl.deleteBuffer(this.buffer);
-      gl.deleteProgram(program);
-      throw new Error('Unable to create liquid framebuffer');
-    }
-    this.liquidFramebuffer = framebuffer;
-    gl.uniform1i(this.location('glyph'), 0);
-    gl.uniform1i(this.location('bevel'), 1);
-    gl.uniform1i(this.location('liquid'), 2);
-    gl.uniform1f(this.location('variant'), variant);
-    gl.uniform1f(this.location('effectMode'), effect === 'reflections' ? 1 : effect === 'sheen' ? 2 : 0);
-    this.updateTheme();
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(card);
     this.themeObserver = new MutationObserver(this.updateTheme);
@@ -288,20 +277,58 @@ export class LiquidFlowRenderer {
     // Listening never requests sensor permission. Browsers that require consent
     // deliver events only after the user has granted it; animation needs no sensor.
     window.addEventListener('deviceorientation', this.orientation, { passive: true });
+    const parallel = gl.getExtension('KHR_parallel_shader_compile') as { COMPLETION_STATUS_KHR: number } | null;
+    const finish = () => {
+      this.initializationTimer = this.initializationIdle = undefined;
+      if (this.disposed) return;
+      if (parallel && !gl.getProgramParameter(program, parallel.COMPLETION_STATUS_KHR)) {
+        this.initializationTimer = setTimeout(finish, 16);
+        return;
+      }
+      try { this.initializeResources(variant); } catch { this.dispose(); }
+      this.completeInitialization();
+    };
+    // Never ask for synchronous compile/link status in the click handler.
+    if (parallel) this.initializationTimer = setTimeout(finish, 0);
+    else if (typeof window.requestIdleCallback === 'function') this.initializationIdle = window.requestIdleCallback(finish, { timeout: 500 });
+    else this.initializationTimer = setTimeout(finish, 16);
+  }
+
+  private initializeResources(variant: number): void {
+    const gl = this.gl;
+    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) { this.dispose(); return; }
+    gl.useProgram(this.program);
+    this.buffer = gl.createBuffer()!;
+    if (!this.buffer) { this.dispose(); return; }
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    const position = gl.getAttribLocation(this.program, 'position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+    this.glyphTexture = this.createTexture(0);
+    this.bevelTexture = this.createTexture(1);
+    this.liquidTexture = this.createTexture(2);
+    this.liquidFramebuffer = gl.createFramebuffer()!;
+    if (!this.liquidFramebuffer) { this.dispose(); return; }
+    gl.uniform1i(this.location('glyph'), 0);
+    gl.uniform1i(this.location('bevel'), 1);
+    gl.uniform1i(this.location('liquid'), 2);
+    gl.uniform1f(this.location('variant'), variant);
+    this.initialized = true;
+    this.setEffect(this.effect);
+    this.updateTheme();
     this.resize();
     if (this.disposed) return;
-    // The cached surface gets one prepared frame, never a background RAF loop.
     if (!this.active) this.draw(performance.now(), true);
-    card.classList.add('has-liquid-canvas');
     this.syncMotion();
     // Angular finishes host bindings after child view initialization.
     queueMicrotask(this.refreshStyles);
-    const digits = card.querySelector<HTMLElement>('.result-time-value');
+    const digits = this.card.querySelector<HTMLElement>('.result-time-value');
     if (digits) {
       const font = getComputedStyle(digits);
       const refreshNumerals = (): void => {
         if (!this.disposed) {
-          this.maskDirty = true;
+          this.invalidateMask();
           this.draw(performance.now(), !this.active);
         }
       };
@@ -315,7 +342,7 @@ export class LiquidFlowRenderer {
   setValue(value: string): void {
     if (this.disposed || this.value === value) return;
     this.value = value;
-    this.maskDirty = true;
+    this.invalidateMask();
     this.draw(performance.now());
   }
 
@@ -323,6 +350,9 @@ export class LiquidFlowRenderer {
     if (this.disposed || this.active === active) return;
     this.active = active;
     if (active) {
+      // A prewarmed canvas may still contain its sample time. Show the current
+      // semantic clock until the actual result's background job has completed.
+      if (this.maskDirty) this.card.classList.remove('has-liquid-canvas');
       const box = this.card.getBoundingClientRect();
       this.visible = box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight
         && box.right > 0 && box.left < innerWidth;
@@ -332,13 +362,30 @@ export class LiquidFlowRenderer {
 
   refreshTypography(): void {
     if (this.disposed) return;
-    this.maskDirty = true;
+    this.invalidateMask();
     // Angular applies the card's font size and timeline class after child inputs.
     queueMicrotask(() => this.draw(performance.now()));
   }
 
+  /** Apply one Angular render together, after its clock elements have updated. */
+  updateFrame(value: string, active: boolean, effect: GlassAnimation, typographyChanged: boolean): void {
+    if (this.disposed) return;
+    if (this.value !== value || typographyChanged) {
+      this.value = value;
+      this.invalidateMask();
+    }
+    if (this.effect !== effect) {
+      this.effect = effect;
+      if (this.initialized) this.gl.uniform1f(this.location('effectMode'), effect === 'reflections' ? 1 : effect === 'sheen' ? 2 : 0);
+    }
+    if (this.active !== active) this.setActive(active);
+    else this.draw(performance.now());
+  }
+
   setEffect(effect: GlassAnimation): void {
     if (this.disposed) return;
+    this.effect = effect;
+    if (!this.initialized) return;
     this.gl.uniform1f(this.location('effectMode'), effect === 'reflections' ? 1 : effect === 'sheen' ? 2 : 0);
     this.draw(performance.now());
   }
@@ -363,6 +410,7 @@ export class LiquidFlowRenderer {
   private createTexture(unit: number): WebGLTexture {
     const gl = this.gl;
     const texture = gl.createTexture()!;
+    if (!texture) throw new Error('Unable to create liquid texture');
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -373,7 +421,7 @@ export class LiquidFlowRenderer {
   }
 
   private readonly resize = (): void => {
-    if (this.disposed) return;
+    if (this.disposed || !this.initialized) return;
     const ratio = Math.min(devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.round(this.card.clientWidth * ratio));
     const h = Math.max(1, Math.round(this.card.clientHeight * ratio));
@@ -398,7 +446,7 @@ export class LiquidFlowRenderer {
       return;
     }
     this.framebufferReady = true;
-    this.maskDirty = true;
+    this.invalidateMask();
     this.draw(performance.now());
   };
 
@@ -481,53 +529,45 @@ export class LiquidFlowRenderer {
     const sy = Number.isFinite(top) ? Math.max(0, Math.floor(top * this.ratio) - margin) : 0;
     const width = Math.max(1, Math.min(this.mask.width, Number.isFinite(right) ? Math.ceil(right * this.ratio) + margin : 1) - sx);
     const height = Math.max(1, Math.min(this.mask.height, Number.isFinite(bottom) ? Math.ceil(bottom * this.ratio) + margin : 1) - sy);
-    const distance = glyphInteriorDistance(ctx.getImageData(sx, sy, width, height).data, width, height);
-    const surface = soft.getImageData(sx, sy, width, height);
-    for (let i = 0; i < distance.length; i++) {
-      const pixel = i * 4;
-      surface.data[pixel + 1] = surface.data[pixel + 3];
-      if (distance[i] === 0 && surface.data[pixel + 1] < 2) {
-        surface.data[pixel] = surface.data[pixel + 2] = 0;
-        surface.data[pixel + 3] = 255;
-        continue;
-      }
-      const x = i % width;
-      const y = Math.floor(i / width);
-      // Smooth the distance surface, retaining the original crisp glyph coverage.
-      let smoothed = 0;
-      let weights = 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        if (x + dx < 0 || x + dx >= width || y + dy < 0 || y + dy >= height) continue;
-        const weight = (dx === 0 ? 2 : 1) * (dy === 0 ? 2 : 1);
-        smoothed += Math.max(0, distance[(y + dy) * width + x + dx] - .5) * weight;
-        weights += weight;
-      }
-      const encoded = Math.round(Math.min(32, smoothed / weights / this.ratio) * 65535 / 32);
-      surface.data[pixel] = encoded >>> 8;
-      surface.data[pixel + 2] = encoded & 255;
-      surface.data[pixel + 3] = 255;
-    }
-    // The shader reads G as shadow coverage and RB as encoded distance, even
-    // outside the ink crop. Raw white blur pixels there produce rectangular
-    // seams. Initialize the ENTIRE data texture to the encoded empty surface.
-    soft.filter = 'none';
-    soft.fillStyle = '#000';
-    soft.fillRect(0, 0, this.softMask.width, this.softMask.height);
-    soft.putImageData(surface, sx, sy);
-    const gl = this.gl;
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    for (const [unit, texture, source] of [[0, this.glyphTexture, this.mask], [1, this.bevelTexture, this.softMask]] as const) {
-      gl.activeTexture(gl.TEXTURE0 + unit);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
-    }
-    this.texturesReady = true;
+    const revision = this.maskRevision;
+    this.maskCompletion = new Promise<void>(resolve => this.completeMask = resolve);
     this.maskDirty = false;
+    this.maskProcessor ??= new GlassMaskProcessor();
+    this.maskProcessor.submit({ alpha: ctx.getImageData(sx, sy, width, height).data,
+      surface: soft.getImageData(sx, sy, width, height).data, width, height, ratio: this.ratio }, result => {
+      if (this.disposed || revision !== this.maskRevision) return;
+      if (!result) { this.dispose(); return; }
+      // Outside the ink crop, the bevel texture must encode an empty surface.
+      soft.filter = 'none';
+      soft.fillStyle = '#000';
+      soft.fillRect(0, 0, this.softMask.width, this.softMask.height);
+      soft.putImageData(new ImageData(result, width, height), sx, sy);
+      const gl = this.gl;
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+      for (const [unit, texture, source] of [[0, this.glyphTexture, this.mask], [1, this.bevelTexture, this.softMask]] as const) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      }
+      this.texturesReady = true;
+      this.card.classList.add('has-liquid-canvas');
+      this.completeMask?.();
+      this.completeMask = undefined;
+      this.draw(performance.now(), !this.active);
+    });
+  }
+
+  private invalidateMask(): void {
+    this.maskDirty = true;
+    this.maskRevision++;
+    this.maskProcessor?.cancel();
+    this.completeMask?.();
+    this.completeMask = undefined;
   }
 
   private readonly updateTheme = (): void => {
     const root = this.card.closest('app-root');
-    if (!root || this.disposed) return;
+    if (!root || this.disposed || !this.initialized) return;
     const style = getComputedStyle(this.card);
     const sample = this.colorSample.getContext('2d', { willReadFrequently: true })!;
     for (const [uniform, variable, fallback] of [
@@ -548,8 +588,9 @@ export class LiquidFlowRenderer {
 
   private readonly refreshStyles = (): void => {
     if (this.disposed) return;
-    this.maskDirty = true;
+    this.invalidateMask();
     this.updateTheme();
+    if (!this.active) this.draw(performance.now(), true);
   };
 
   private readonly stylesheetLoaded = (event: Event): void => {
@@ -563,7 +604,9 @@ export class LiquidFlowRenderer {
   private draw(now: number, prepare = false): void {
     if (this.disposed || (!prepare && (!this.active || !this.visible)) || document.hidden || !this.framebufferReady || this.gl.isContextLost()) return;
     // Countdown changes in a paused card collapse into one upload on return.
-    if (this.maskDirty) this.paintMask();
+    if (this.maskDirty) {
+      try { this.paintMask(); } catch { this.dispose(); return; }
+    }
     if (!this.texturesReady) return;
     const gl = this.gl;
     gl.uniform1f(this.location('time'), this.reducedMotion.matches ? 0 : this.elapsed);
@@ -597,7 +640,7 @@ export class LiquidFlowRenderer {
     this.frame = null;
     this.lastFrame = performance.now();
     this.draw(performance.now());
-    if (!this.disposed && this.active && this.visible && !document.hidden && !this.reducedMotion.matches) this.frame = requestAnimationFrame(this.tick);
+    if (!this.disposed && this.initialized && this.active && this.visible && !document.hidden && !this.reducedMotion.matches) this.frame = requestAnimationFrame(this.tick);
   };
 
   private readonly orientation = (event: DeviceOrientationEvent): void => {
@@ -618,6 +661,11 @@ export class LiquidFlowRenderer {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    if (this.initializationTimer !== undefined) clearTimeout(this.initializationTimer);
+    if (this.initializationIdle !== undefined) window.cancelIdleCallback(this.initializationIdle);
+    this.completeInitialization();
+    this.completeMask?.();
+    this.maskProcessor?.dispose();
     if (this.frame !== null) cancelAnimationFrame(this.frame);
     this.resizeObserver.disconnect();
     this.themeObserver.disconnect();
@@ -629,11 +677,11 @@ export class LiquidFlowRenderer {
     this.canvas.removeEventListener('webglcontextlost', this.contextLost);
     window.removeEventListener('deviceorientation', this.orientation);
     this.card.classList.remove('has-liquid-canvas');
-    this.gl.deleteTexture(this.glyphTexture);
-    this.gl.deleteTexture(this.bevelTexture);
-    this.gl.deleteTexture(this.liquidTexture);
-    this.gl.deleteFramebuffer(this.liquidFramebuffer);
-    this.gl.deleteBuffer(this.buffer);
+    if (this.glyphTexture) this.gl.deleteTexture(this.glyphTexture);
+    if (this.bevelTexture) this.gl.deleteTexture(this.bevelTexture);
+    if (this.liquidTexture) this.gl.deleteTexture(this.liquidTexture);
+    if (this.liquidFramebuffer) this.gl.deleteFramebuffer(this.liquidFramebuffer);
+    if (this.buffer) this.gl.deleteBuffer(this.buffer);
     this.gl.deleteProgram(this.program);
   }
 }

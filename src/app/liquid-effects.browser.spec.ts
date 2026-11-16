@@ -34,6 +34,7 @@ describe('Glass effects in WebGL', () => {
     let renderer: LiquidFlowRenderer | undefined;
     try {
       renderer = new LiquidFlowRenderer(canvas, card, 0, '16:15', true);
+      await renderer.ready;
       expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
       const capture = (): string => {
         const pixels = new Uint8Array(canvas.width * canvas.height * 4);

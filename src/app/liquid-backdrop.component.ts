@@ -23,6 +23,9 @@ export class LiquidBackdropComponent implements AfterViewInit, OnChanges, OnDest
   @Input() effect: GlassAnimation = 'liquid';
   @ViewChild('flowCanvas', { static: true }) private flowCanvas!: ElementRef<HTMLCanvasElement>;
   private renderer?: LiquidFlowRenderer;
+  private updateQueued = false;
+  private typographyChanged = false;
+  private destroyed = false;
 
   constructor(private readonly element: ElementRef<HTMLElement>, private readonly zone: NgZone) {}
 
@@ -40,15 +43,22 @@ export class LiquidBackdropComponent implements AfterViewInit, OnChanges, OnDest
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.renderer?.setValue(this.value);
-    this.renderer?.setActive(this.active);
-    if (changes['textScale'] || changes['timeline'] || changes['sideScale'] || changes['earlyValue'] || changes['lateValue']) this.renderer?.refreshTypography();
-    if (changes['effect']) this.renderer?.setEffect(this.effect);
+    this.typographyChanged ||= !!(changes['textScale'] || changes['timeline'] ||
+      this.timeline && (changes['sideScale'] || changes['earlyValue'] || changes['lateValue']));
+    if (this.updateQueued) return;
+    this.updateQueued = true;
+    queueMicrotask(() => {
+      this.updateQueued = false;
+      if (this.destroyed) return;
+      const typographyChanged = this.typographyChanged;
+      this.typographyChanged = false;
+      this.zone.runOutsideAngular(() => this.renderer?.updateFrame(this.value, this.active, this.effect, typographyChanged));
+    });
   }
 
   @HostListener('liquid-snapshot', ['$event'])
   copyFrame(event: CustomEvent<HTMLCanvasElement>): void {
     this.renderer?.copyFrame(event.detail);
   }
-  ngOnDestroy(): void { this.renderer?.dispose(); }
+  ngOnDestroy(): void { this.destroyed = true; this.renderer?.dispose(); }
 }

@@ -1,5 +1,8 @@
 import { LiquidFlowRenderer } from './liquid-flow-renderer';
 import { TIME_COLON_GAP_EM, TIME_COLON_OFFSET_EM } from './time-typography';
+import { GlassMaskProcessor } from './glass-mask-processor';
+import { encodeGlassMask } from './glass-mask';
+import { fakeAsync, tick } from '@angular/core/testing';
 
 describe('LiquidFlowRenderer lifecycle', () => {
   let renderer: LiquidFlowRenderer | undefined;
@@ -33,6 +36,9 @@ describe('LiquidFlowRenderer lifecycle', () => {
       return nextFrame;
     });
     spyOn(window, 'cancelAnimationFrame').and.callFake(id => { frames.delete(id); });
+    spyOn(window, 'requestIdleCallback').and.callFake(callback => { callback({ didTimeout: false, timeRemaining: () => 50 }); return 1; });
+    spyOn(window, 'cancelIdleCallback').and.stub();
+    spyOn(GlassMaskProcessor.prototype, 'submit').and.callFake((input, done) => done(encodeGlassMask(input)));
     // Keep the asynchronous font refresh out of lifecycle tests.
     spyOn(document.fonts, 'load').and.returnValue(new Promise<FontFace[]>(() => {}));
 
@@ -60,7 +66,7 @@ describe('LiquidFlowRenderer lifecycle', () => {
       'texParameteri', 'getUniformLocation', 'uniform1i', 'uniform1f', 'uniform2f', 'uniform3f',
       'viewport', 'pixelStorei', 'texImage2D', 'isContextLost', 'drawArrays', 'deleteTexture',
       'deleteBuffer', 'deleteProgram', 'createFramebuffer', 'bindFramebuffer', 'framebufferTexture2D',
-      'checkFramebufferStatus', 'deleteFramebuffer',
+      'checkFramebufferStatus', 'deleteFramebuffer', 'getExtension',
     ]);
     Object.assign(gl, {
       VERTEX_SHADER: 35633, FRAGMENT_SHADER: 35632, COMPILE_STATUS: 35713, LINK_STATUS: 35714,
@@ -74,6 +80,7 @@ describe('LiquidFlowRenderer lifecycle', () => {
     gl.createShader.and.returnValue({} as WebGLShader);
     gl.getShaderParameter.and.returnValue(true);
     gl.getProgramParameter.and.returnValue(true);
+    gl.getExtension.and.returnValue(null);
     gl.createBuffer.and.returnValue({} as WebGLBuffer);
     gl.createTexture.and.callFake(() => ({} as WebGLTexture));
     gl.createFramebuffer.and.returnValue({} as WebGLFramebuffer);
@@ -133,6 +140,97 @@ describe('LiquidFlowRenderer lifecycle', () => {
       (location as unknown as { name: string }).name === 'time');
     return calls[calls.length - 1][1];
   }
+
+  it('waits for parallel shader completion without a blocking compile/link check and applies the newest pending settings', fakeAsync(() => {
+    const completion = 37297;
+    let compiled = false;
+    gl.getExtension.and.returnValue({ COMPLETION_STATUS_KHR: completion });
+    gl.getProgramParameter.and.callFake((_program, property) => property === completion ? compiled : true);
+    renderer = new LiquidFlowRenderer(canvas, card, 0, '15:27');
+    renderer.setValue('16:00');
+    renderer.setEffect('sheen');
+    expect(gl.getShaderParameter).not.toHaveBeenCalled();
+    expect(gl.getProgramParameter).not.toHaveBeenCalled();
+    expect(gl.createBuffer).not.toHaveBeenCalled();
+    expect(card.classList.contains('has-liquid-canvas')).toBeFalse();
+    tick(0);
+    expect(gl.getProgramParameter.calls.allArgs().every(([, property]) => property === completion)).toBeTrue();
+    compiled = true;
+    tick(16);
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+    expect(gl.createProgram).toHaveBeenCalledTimes(1);
+    const effect = gl.uniform1f.calls.allArgs().filter(([location]) =>
+      (location as unknown as { name: string }).name === 'effectMode').at(-1)!;
+    expect(effect[1]).toBe(2);
+    renderer.dispose();
+    renderer = undefined;
+  }));
+
+  it('cancels pending compilation and never starts mask jobs after teardown', fakeAsync(() => {
+    gl.getExtension.and.returnValue({ COMPLETION_STATUS_KHR: 37297 });
+    gl.getProgramParameter.and.returnValue(false);
+    renderer = new LiquidFlowRenderer(canvas, card, 0, '15:27');
+    renderer.dispose();
+    tick(1000);
+    expect(gl.createTexture).not.toHaveBeenCalled();
+    expect(gl.drawArrays).not.toHaveBeenCalled();
+    expect(GlassMaskProcessor.prototype.submit).not.toHaveBeenCalled();
+    expect(gl.deleteProgram).toHaveBeenCalledTimes(1);
+  }));
+
+  it('builds a single mask for a batch of value, effect and typography changes', () => {
+    const flow = create();
+    const masks = GlassMaskProcessor.prototype.submit as jasmine.Spy;
+    masks.calls.reset();
+    const uploads = gl.texImage2D.calls.count();
+    flow.updateFrame('15:28', true, 'reflections', true);
+    expect(masks).toHaveBeenCalledTimes(1);
+    expect(gl.texImage2D.calls.count()).toBe(uploads + 2);
+    expect(gl.createProgram).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores obsolete background mask results and releases the worker when the card is removed', () => {
+    const done: ((surface: Uint8ClampedArray | null) => void)[] = [];
+    const inputs: Parameters<GlassMaskProcessor['submit']>[0][] = [];
+    (GlassMaskProcessor.prototype.submit as jasmine.Spy).and.callFake((input, callback) => { inputs.push(input); done.push(callback); });
+    const release = spyOn(GlassMaskProcessor.prototype, 'dispose').and.callThrough();
+    const flow = create();
+    expect(card.classList.contains('has-liquid-canvas')).toBeFalse();
+    const uploads = gl.texImage2D.calls.count();
+    done[0](encodeGlassMask(inputs[0]));
+    expect(gl.texImage2D.calls.count()).toBe(uploads);
+    done.at(-1)!(encodeGlassMask(inputs.at(-1)!));
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+    expect(gl.texImage2D.calls.count()).toBe(uploads + 2);
+    flow.setValue('15:29');
+    flow.dispose();
+    done.at(-1)!(encodeGlassMask(inputs.at(-1)!));
+    expect(gl.texImage2D.calls.count()).toBe(uploads + 2);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the actual HTML clock while an updated prewarmed canvas is still being prepared', () => {
+    const flow = create();
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+    flow.setActive(false);
+    let complete!: (surface: Uint8ClampedArray | null) => void;
+    let input!: Parameters<GlassMaskProcessor['submit']>[0];
+    (GlassMaskProcessor.prototype.submit as jasmine.Spy).and.callFake((request, done) => { input = request; complete = done; });
+    card.querySelector('strong')!.textContent = '16:58';
+    flow.updateFrame('16:58', true, 'liquid', false);
+    expect(card.classList.contains('has-liquid-canvas')).toBeFalse();
+    expect(card.querySelector('strong')!.textContent).toBe('16:58');
+    complete(encodeGlassMask(input));
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+  });
+
+  it('keeps the readable fallback when GPU resources cannot be allocated', () => {
+    gl.createTexture.and.returnValue(null);
+    create();
+    expect(card.classList.contains('has-liquid-canvas')).toBeFalse();
+    expect(gl.deleteProgram).toHaveBeenCalledTimes(1);
+    expect(frames.size).toBe(0);
+  });
 
   it('renders consecutive 60 Hz frames without rebuilding the numeral textures', () => {
     create();
@@ -542,7 +640,7 @@ describe('LiquidFlowRenderer lifecycle', () => {
 });
 
 describe('LiquidFlowRenderer WebGL integration', () => {
-  it('keeps dark ribbons below the light material while the glass numerals retain contrast', () => {
+  it('keeps dark ribbons below the light material while the glass numerals retain contrast', async () => {
     spyOn(window, 'requestAnimationFrame').and.returnValue(1);
     spyOn(window, 'cancelAnimationFrame').and.stub();
     spyOn(window, 'matchMedia').and.returnValue(Object.assign(new EventTarget(), { matches: true }) as MediaQueryList);
@@ -559,7 +657,7 @@ describe('LiquidFlowRenderer WebGL integration', () => {
     let renderer: LiquidFlowRenderer | undefined;
     const luminance = (pixels: Uint8Array, i: number): number =>
       pixels[i] * .2126 + pixels[i + 1] * .7152 + pixels[i + 2] * .0722;
-    const measure = (dark: boolean): { background: number; brightNumerals: number } => {
+    const measure = async (dark: boolean): Promise<{ background: number; brightNumerals: number }> => {
       root.className = `${dark ? 'dark-mode ' : ''}accent-violet`;
       const canvas = document.createElement('canvas');
       card.replaceChildren(canvas, digits);
@@ -567,9 +665,11 @@ describe('LiquidFlowRenderer WebGL integration', () => {
       if (!gl) throw new Error('WebGL is required for the optical contrast regression');
       renderer = new LiquidFlowRenderer(canvas, card, 0);
       renderer.setValue('');
+      await renderer.ready;
       const background = new Uint8Array(canvas.width * canvas.height * 4);
       gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, background);
       renderer.setValue('15:27');
+      await renderer.ready;
       const numerals = new Uint8Array(background.length);
       gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, numerals);
       let total = 0, brightNumerals = 0;
@@ -583,8 +683,8 @@ describe('LiquidFlowRenderer WebGL integration', () => {
       return { background: total / (background.length / 4), brightNumerals };
     };
     try {
-      const dark = measure(true);
-      const light = measure(false);
+      const dark = await measure(true);
+      const light = await measure(false);
       expect(dark.background).withContext('The dark fluid must leave a deep backdrop behind the glass').toBeLessThan(light.background * .4);
       expect(dark.brightNumerals).withContext('Dimming the fluid must not dim the readable glass digits').toBeGreaterThan(160 * 80 * .06);
     } finally {
@@ -593,7 +693,7 @@ describe('LiquidFlowRenderer WebGL integration', () => {
     }
   });
 
-  it('compiles the real shaders and renders the two passes without graphics errors', () => {
+  it('compiles the real shaders and renders the two passes without graphics errors', async () => {
     let nextFrame: FrameRequestCallback | undefined;
     let now = 1000;
     spyOn(performance, 'now').and.callFake(() => now);
@@ -624,6 +724,7 @@ describe('LiquidFlowRenderer WebGL integration', () => {
       }
       renderer = new LiquidFlowRenderer(canvas, card, 1);
       renderer.setValue('15:27');
+      await renderer.ready;
       expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
       expect(gl.getError()).toBe(gl.NO_ERROR);
       const pixel = new Uint8Array(4);

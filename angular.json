@@ -20,6 +20,7 @@
               "zone.js"
             ],
             "tsConfig": "tsconfig.app.json",
+            "webWorkerTsConfig": "tsconfig.worker.json",
             "assets": [
               "src/favicon.ico",
               "src/assets"
@@ -79,6 +80,7 @@
               "zone.js/testing"
             ],
             "tsConfig": "tsconfig.spec.json",
+            "webWorkerTsConfig": "tsconfig.worker.json",
             "assets": [
               "src/favicon.ico",
               "src/assets"
