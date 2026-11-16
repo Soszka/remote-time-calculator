@@ -223,6 +223,11 @@ export class LiquidFlowRenderer {
   private maskRevision = 0;
   private maskCompletion = Promise.resolve();
   private completeMask?: () => void;
+  private numeralFont = '';
+  private loadingFont = '';
+  private fontReadiness = Promise.resolve();
+  private completeDisposal!: () => void;
+  private readonly disposal = new Promise<void>(resolve => this.completeDisposal = resolve);
   private effect: GlassAnimation;
 
   /** Resolves after the currently requested clock frame is ready (also on teardown/fallback). */
@@ -230,13 +235,43 @@ export class LiquidFlowRenderer {
 
   private async waitForFrame(): Promise<void> {
     await this.initialization;
+    // Production may still be applying its nonblocking stylesheet and font face.
+    await this.waitForPageLoad();
     while (!this.disposed) {
+      await this.waitForVisibility();
+      if (this.disposed) return;
+      this.ensureNumeralFont();
+      const font = this.fontReadiness;
+      await Promise.race([font, this.disposal]);
+      if (this.disposed) return;
       this.draw(performance.now(), true);
       const revision = this.maskRevision;
       await this.maskCompletion;
-      if (revision === this.maskRevision && !this.maskDirty) return;
+      if (font === this.fontReadiness && revision === this.maskRevision && !this.maskDirty) return;
       if (this.maskDirty) await new Promise<void>(resolve => setTimeout(resolve, 16));
     }
+  }
+
+  private async waitForPageLoad(): Promise<void> {
+    if (document.readyState === 'complete') return;
+    let onLoad!: () => void;
+    const loaded = new Promise<void>(resolve => {
+      onLoad = resolve;
+      window.addEventListener('load', onLoad, { once: true });
+    });
+    await Promise.race([loaded, this.disposal]);
+    window.removeEventListener('load', onLoad);
+  }
+
+  private async waitForVisibility(): Promise<void> {
+    if (!document.hidden) return;
+    let onVisible!: () => void;
+    const visible = new Promise<void>(resolve => {
+      onVisible = () => { if (!document.hidden) resolve(); };
+      document.addEventListener('visibilitychange', onVisible);
+    });
+    await Promise.race([visible, this.disposal]);
+    document.removeEventListener('visibilitychange', onVisible);
   }
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly card: HTMLElement, variant: number,
@@ -323,19 +358,28 @@ export class LiquidFlowRenderer {
     this.syncMotion();
     // Angular finishes host bindings after child view initialization.
     queueMicrotask(this.refreshStyles);
+    this.ensureNumeralFont();
+  }
+
+  private ensureNumeralFont(recheck = false): void {
     const digits = this.card.querySelector<HTMLElement>('.result-time-value');
     if (digits) {
       const font = getComputedStyle(digits);
+      const descriptor = `${font.fontStyle} ${font.fontWeight} 16px ${font.fontFamily}`;
+      if (descriptor === this.numeralFont && (!recheck || descriptor === this.loadingFont)) return;
+      this.numeralFont = descriptor;
       const refreshNumerals = (): void => {
+        if (this.loadingFont === descriptor) this.loadingFont = '';
         if (!this.disposed) {
           this.invalidateMask();
           this.draw(performance.now(), !this.active);
         }
       };
-      const descriptor = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
+      // Font availability depends on the face/weight, not the size slider.
       if (!document.fonts.check(descriptor, '0123456789:')) {
-        void document.fonts.load(descriptor, '0123456789:').then(refreshNumerals, refreshNumerals);
-      }
+        this.loadingFont = descriptor;
+        this.fontReadiness = document.fonts.load(descriptor, '0123456789:').then(refreshNumerals, refreshNumerals);
+      } else this.fontReadiness = Promise.resolve();
     }
   }
 
@@ -588,6 +632,7 @@ export class LiquidFlowRenderer {
 
   private readonly refreshStyles = (): void => {
     if (this.disposed) return;
+    this.ensureNumeralFont(true);
     this.invalidateMask();
     this.updateTheme();
     if (!this.active) this.draw(performance.now(), true);
@@ -661,6 +706,7 @@ export class LiquidFlowRenderer {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.completeDisposal();
     if (this.initializationTimer !== undefined) clearTimeout(this.initializationTimer);
     if (this.initializationIdle !== undefined) window.cancelIdleCallback(this.initializationIdle);
     this.completeInitialization();

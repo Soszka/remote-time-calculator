@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { AppComponent } from './app.component';
+import { LiquidBackdropComponent } from './liquid-backdrop.component';
 
 @Component({ standalone: true, imports: [AppComponent], template: '<app-root></app-root>' })
 class PreviewHostComponent {}
@@ -409,7 +410,7 @@ describe('Configuration preview', () => {
       fixture.detectChanges();
       expect(app.settings().cardAnimation).toBe(mode);
       expect(JSON.parse(localStorage.getItem('workEndCalculator.settings')!).cardAnimation).toBe(mode);
-      expect(page.querySelectorAll('canvas').length).toBe(mode === 'none' ? 0 : 2);
+      expect(fixture.debugElement.queryAll(By.directive(LiquidBackdropComponent)).length).toBe(mode === 'none' ? 0 : 2);
       expect(getComputedStyle(page.querySelector('.work-progress')!, '::before').animationName).toBe('progressOrbit');
       expect(page.querySelector('.remaining-time-card > strong')!.textContent).toBe('08:15:00');
       for (const clock of Array.from(page.querySelectorAll('.timeline-side strong, .exit-time-card > strong'))) {

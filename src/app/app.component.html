@@ -415,8 +415,8 @@
           </div>
         </div>
         <div class="summary-line result-summary" [class.cards-side-by-side]="timeDisplayMode() === 'sideBySide'">
-          <article class="summary-item result-time-card exit-time-card" [class.timeline-card]="settings().timelineEnabled">
-            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime" [active]="isResultVisible()" [textScale]="settings().timeScale" [timeline]="settings().timelineEnabled" [sideScale]="settings().timelineSideScale" [earlyValue]="timelineValues()?.earlyEndTime || ''" [lateValue]="timelineValues()?.lateEndTime || ''" [effect]="glassAnimation()"></app-liquid-backdrop>
+          <article class="summary-item result-time-card exit-time-card" [class.timeline-card]="settings().timelineEnabled" [class.graphics-loading]="clockGraphicsLoading()" [attr.aria-busy]="clockGraphicsLoading() ? 'true' : null">
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime" [active]="isResultVisible()" [textScale]="settings().timeScale" [timeline]="settings().timelineEnabled" [sideScale]="settings().timelineSideScale" [earlyValue]="timelineValues()?.earlyEndTime || ''" [lateValue]="timelineValues()?.lateEndTime || ''" [effect]="glassAnimation()" (readinessChange)="onClockGraphicsReadiness('exit', $event)"></app-liquid-backdrop>
             <span class="result-time-label">Wyjście</span>
             <strong class="result-time-value" [appTimeValue]="payload.endTime"></strong>
             <ng-container *ngIf="settings().timelineEnabled && timelineValues() as timeline">
@@ -477,8 +477,8 @@
             </button>
           </div>
 
-          <article class="summary-item result-time-card remaining-time-card" [class.timeline-card]="settings().timelineEnabled">
-            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="remainingDisplay()" [active]="isResultVisible()" [textScale]="settings().timeScale" [timeline]="settings().timelineEnabled" [sideScale]="settings().timelineSideScale" [earlyValue]="timelineValues()?.earlyRemaining || ''" [lateValue]="timelineValues()?.lateRemaining || ''" [effect]="glassAnimation()"></app-liquid-backdrop>
+          <article class="summary-item result-time-card remaining-time-card" [class.timeline-card]="settings().timelineEnabled" [class.graphics-loading]="clockGraphicsLoading()" [attr.aria-busy]="clockGraphicsLoading() ? 'true' : null">
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="remainingDisplay()" [active]="isResultVisible()" [textScale]="settings().timeScale" [timeline]="settings().timelineEnabled" [sideScale]="settings().timelineSideScale" [earlyValue]="timelineValues()?.earlyRemaining || ''" [lateValue]="timelineValues()?.lateRemaining || ''" [effect]="glassAnimation()" (readinessChange)="onClockGraphicsReadiness('remaining', $event)"></app-liquid-backdrop>
             <span class="result-time-label">Czas</span>
             <strong class="result-time-value" [appTimeValue]="remainingDisplay()"></strong>
             <ng-container *ngIf="settings().timelineEnabled && timelineValues() as timeline">

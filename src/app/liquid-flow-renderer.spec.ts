@@ -2,7 +2,7 @@ import { LiquidFlowRenderer } from './liquid-flow-renderer';
 import { TIME_COLON_GAP_EM, TIME_COLON_OFFSET_EM } from './time-typography';
 import { GlassMaskProcessor } from './glass-mask-processor';
 import { encodeGlassMask } from './glass-mask';
-import { fakeAsync, tick } from '@angular/core/testing';
+import { fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 
 describe('LiquidFlowRenderer lifecycle', () => {
   let renderer: LiquidFlowRenderer | undefined;
@@ -140,6 +140,71 @@ describe('LiquidFlowRenderer lifecycle', () => {
       (location as unknown as { name: string }).name === 'time');
     return calls[calls.length - 1][1];
   }
+
+  it('keeps first-frame readiness pending until the numeric font has loaded and its mask is redrawn', fakeAsync(() => {
+    spyOn(document.fonts, 'check').and.returnValue(false);
+    let finishFont!: (faces: FontFace[]) => void;
+    (document.fonts.load as jasmine.Spy).and.returnValue(new Promise<FontFace[]>(resolve => finishFont = resolve));
+    const flow = create();
+    let ready = false;
+    void flow.ready.then(() => ready = true);
+    flushMicrotasks();
+    expect(ready).toBeFalse();
+    const uploads = gl.texImage2D.calls.count();
+    finishFont([]); flushMicrotasks();
+    expect(ready).toBeTrue();
+    expect(gl.texImage2D.calls.count()).toBeGreaterThan(uploads);
+  }));
+
+  it('releases readiness on teardown even if a font request never answers', fakeAsync(() => {
+    spyOn(document.fonts, 'check').and.returnValue(false);
+    const flow = create();
+    let ready = false;
+    void flow.ready.then(() => ready = true);
+    flushMicrotasks();
+    expect(ready).toBeFalse();
+    flow.dispose(); flushMicrotasks();
+    expect(ready).toBeTrue();
+    expect(card.classList.contains('has-liquid-canvas')).toBeFalse();
+  }));
+
+  it('still resolves a readable frame when the numeric font download fails', fakeAsync(() => {
+    spyOn(document.fonts, 'check').and.returnValue(false);
+    (document.fonts.load as jasmine.Spy).and.callFake(() => Promise.reject(new Error('Font unavailable')));
+    const flow = create();
+    let ready = false;
+    void flow.ready.then(() => ready = true);
+    flushMicrotasks();
+    expect(ready).toBeTrue();
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+  }));
+
+  it('waits for a background tab to become visible without repeatedly polling its clock layout', fakeAsync(() => {
+    hidden = true;
+    const flow = create();
+    let ready = false;
+    void flow.ready.then(() => ready = true);
+    flushMicrotasks();
+    const measure = spyOn(card, 'getBoundingClientRect').and.callThrough();
+    tick(10000);
+    expect(ready).toBeFalse();
+    expect(measure).not.toHaveBeenCalled();
+    hidden = false; document.dispatchEvent(new Event('visibilitychange')); flushMicrotasks();
+    expect(ready).toBeTrue();
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+  }));
+
+  it('waits for nonblocking page styles before revealing the first frame', fakeAsync(() => {
+    spyOnProperty(document, 'readyState', 'get').and.returnValue('interactive');
+    const flow = create();
+    let ready = false;
+    void flow.ready.then(() => ready = true);
+    flushMicrotasks();
+    expect(ready).toBeFalse();
+    window.dispatchEvent(new Event('load')); flushMicrotasks();
+    expect(ready).toBeTrue();
+    expect(card.classList.contains('has-liquid-canvas')).toBeTrue();
+  }));
 
   it('waits for parallel shader completion without a blocking compile/link check and applies the newest pending settings', fakeAsync(() => {
     const completion = 37297;

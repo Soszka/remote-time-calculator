@@ -2238,6 +2238,7 @@ app-root.dark-mode .summary-item.result-time-card {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0.82;
+  transition: opacity 260ms ease;
   pointer-events: none;
 }
 
@@ -2252,6 +2253,17 @@ app-root.dark-mode .summary-item.result-time-card {
   pointer-events: none;
 }
 
+.graphics-loading.result-time-card::before { opacity: .2; }
+.graphics-loading.result-time-card::after {
+  background: linear-gradient(105deg, transparent 25%, color-mix(in srgb, var(--flow-label) 8%, transparent) 50%, transparent 75%);
+  box-shadow: none;
+  animation: clockLoadingSweep 1600ms ease-in-out infinite;
+}
+@keyframes clockLoadingSweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
 app-liquid-backdrop {
   position: absolute;
   z-index: 1;
@@ -2259,12 +2271,13 @@ app-liquid-backdrop {
   pointer-events: none;
 }
 
-.liquid-flow-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.liquid-flow-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 260ms ease; }
 .has-liquid-canvas .liquid-flow-canvas { opacity: 1; }
 .liquid-flow-fallback {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  transition: opacity 180ms ease;
 }
 /* Static organic ribbons retain a readable clock when GPU rendering is unavailable. */
 .liquid-flow-fallback::before,
@@ -2328,6 +2341,41 @@ app-liquid-backdrop {
 }
 
 .result-time-value .time-glyph { display: block; }
+.result-time-card .time-glyph { transition: opacity 180ms ease; }
+.timeline-side > strong { position: relative; }
+
+/* Keep real clock geometry for the renderer while its first frame/font loads. */
+.result-time-value::after,
+.timeline-side > strong::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  top: 18%;
+  bottom: 18%;
+  left: 50%;
+  width: 2.55em;
+  transform: translateX(-50%);
+  border-radius: .12em;
+  background: color-mix(in srgb, var(--flow-label) 16%, transparent);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.remaining-time-card .result-time-value::after { width: 4.15em; }
+.graphics-loading .result-time-value::after,
+.graphics-loading .timeline-side > strong::after { opacity: 1; transition: none; }
+.graphics-loading .time-glyph,
+.graphics-loading .liquid-flow-canvas,
+.graphics-loading .liquid-flow-fallback { opacity: 0; transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .graphics-loading.result-time-card::after { animation: none; }
+  .result-time-card::before { transition: none; }
+  .liquid-flow-canvas, .liquid-flow-fallback, .result-time-card .time-glyph,
+  .result-time-value::after, .timeline-side > strong::after { transition: none; }
+}
+
+/* Inert appearance snapshots retain their own theme during a crossfade. */
+.clock-style-snapshot * { animation: none !important; transition: none !important; pointer-events: none !important; }
 .result-time-value .time-glyph:last-child { letter-spacing: 0; }
 .result-time-value .time-separator {
   position: relative;

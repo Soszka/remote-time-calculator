@@ -17,6 +17,7 @@ import { TimeValueComponent } from './time-value.component';
 import { VIEW_MORPH_MS, ViewMorph, ViewMorphSnapshot } from './view-morph';
 import { PANEL_MOTION, PanelMotionDirective } from './panel-motion.directive';
 import { SettingsMotion } from './settings-motion';
+import { ClockStyleTransition } from './clock-style-transition';
 import { CARD_ANIMATIONS, CardAnimation, GlassAnimation } from './card-animation';
 interface BreakFormGroup extends FormGroup<{
   start: FormControl<string | null>;
@@ -503,6 +504,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   readonly isConfigOpen = signal(false);
   readonly isCompactMode = signal(false);
   readonly isResultVisible = computed(() => this.isCompactMode() || this.isConfigOpen());
+  private readonly clockGraphicsReady = signal({ exit: false, remaining: false });
+  readonly clockGraphicsLoading = computed(() => this.isResultVisible() && this.settings().animationsEnabled &&
+    (!this.clockGraphicsReady().exit || !this.clockGraphicsReady().remaining));
   readonly isSwitchingToResult = signal(false);
   readonly isSwitchingToForm = signal(false);
   readonly isResultRevealing = signal(false);
@@ -533,6 +537,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   readonly removingBreaks = signal<ReadonlySet<BreakFormGroup>>(
     new Set<BreakFormGroup>(),
   );
+
+  onClockGraphicsReadiness(clock: 'exit' | 'remaining', ready: boolean): void {
+    if (this.clockGraphicsReady()[clock] !== ready) {
+      this.clockGraphicsReady.update(current => ({ ...current, [clock]: ready }));
+    }
+    if (this.clockGraphicsReady().exit && this.clockGraphicsReady().remaining) {
+      this.zone.runOutsideAngular(() => this.clockStyleTransition.reveal());
+    }
+  }
   readonly highlightedBreaks = signal<ReadonlySet<BreakFormGroup>>(
     new Set<BreakFormGroup>(),
   );
@@ -554,6 +567,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private resultTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly viewMorph: ViewMorph;
   private readonly settingsMotion: SettingsMotion;
+  private readonly clockStyleTransition: ClockStyleTransition;
+  private readonly restoredResult: boolean;
   private warmupIdle: number | null = null;
   private warmupTimeout: ReturnType<typeof setTimeout> | null = null;
   private dynamicCardTimeouts: ReturnType<typeof setTimeout>[] = [];
@@ -576,6 +591,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   ) {
     this.viewMorph = new ViewMorph(element.nativeElement);
     this.settingsMotion = new SettingsMotion(element.nativeElement);
+    this.clockStyleTransition = new ClockStyleTransition(element.nativeElement);
     const settings = this.loadSettings();
     this.settings.set(settings);
     this.configForm.patchValue(
@@ -591,6 +607,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     );
 
     const savedDailyPlan = this.loadDailyPlan();
+    this.restoredResult = !!savedDailyPlan;
     if (savedDailyPlan) {
       this.restoreDailyPlan(savedDailyPlan);
     } else {
@@ -685,6 +702,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    if (this.restoredResult) this.zone.runOutsideAngular(() => this.clockStyleTransition.enter());
     // Compile the two GPU programs between interactions, not in the first click.
     this.zone.runOutsideAngular(() => {
       const prepare = (): void => {
@@ -712,6 +730,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.clearResultTransition();
     this.viewMorph.dispose();
     this.settingsMotion.dispose();
+    this.clockStyleTransition.dispose();
     this.clearDynamicCardTimeouts();
     this.clearDynamicCardHighlightTimeouts();
   }
@@ -730,6 +749,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   openConfig(): void {
     if (this.isConfigOpen()) return;
+    this.clockStyleTransition.cancel();
     this.settingsMotion.cancel();
     const origin = this.settingsMotion.capture();
     this.stopCountdownTimer();
@@ -756,6 +776,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   closeConfig(): void {
     if (!this.isConfigOpen()) return;
+    this.clockStyleTransition.cancel();
     const snapshot = this.settingsMotion.captureClose();
     this.isConfigOpen.set(false);
     this.isCompactMode.set(false);
@@ -777,6 +798,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   setTimeDisplayMode(mode: TimeDisplayMode): void {
+    this.clockStyleTransition.cancel();
     const next = { ...this.settings(), sliderEnabled: mode === 'slider', timelineEnabled: mode === 'timeline', cardsSideBySide: mode === 'sideBySide' };
     this.settings.set(next);
     this.configForm.controls.sliderEnabled.setValue(next.sliderEnabled, { emitEvent: false });
@@ -788,6 +810,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   setTimeScale(kind: 'timeScale' | 'timelineSideScale', event: Event): void {
+    this.clockStyleTransition.cancel();
     const next = { ...this.settings(), [kind]: this.normalizeTimeScale(Number((event.target as HTMLInputElement).value)) };
     this.settings.set(next);
     this.saveSettings(next);
@@ -799,11 +822,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   setCardAnimation(cardAnimation: CardAnimation): void {
+    if (cardAnimation === this.settings().cardAnimation) return;
+    this.zone.runOutsideAngular(() => this.clockStyleTransition.capture());
     const enabled = cardAnimation !== 'none';
+    if (enabled) this.clockGraphicsReady.set({ exit: false, remaining: false });
     const next = { ...this.settings(), cardAnimation, animationsEnabled: enabled };
     this.settings.set(next);
     this.configForm.controls.animationsEnabled.setValue(enabled, { emitEvent: false });
     this.saveSettings(next);
+    if (!enabled) this.zone.runOutsideAngular(() => queueMicrotask(() => this.clockStyleTransition.reveal()));
   }
 
   setCardAccentEnabled(enabled: boolean): void {
@@ -813,10 +840,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   setDarkMode(enabled: boolean): void {
+    this.clockStyleTransition.cancel();
     this.configForm.controls.darkMode.setValue(enabled);
   }
 
   setAccentColor(accentColor: AccentColor): void {
+    this.clockStyleTransition.cancel();
     this.configForm.controls.accentColor.setValue(accentColor);
   }
 
@@ -939,6 +968,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   editPlan(useTransition = true): void {
     if (useTransition && this.isSwitchingToForm()) return;
+    this.clockStyleTransition.cancel();
     const animate = useTransition && this.isCompactMode() && !this.prefersReducedMotion();
     const snapshot = animate ? this.viewMorph.capture('result') : null;
     this.clearResultTransition();
@@ -1018,6 +1048,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   calculate(useTransition = true): void {
     if (useTransition && this.isSwitchingToResult()) return;
+    this.clockStyleTransition.cancel();
     if (!this.canCalculate) {
       this.form.markAllAsTouched();
       this.breaks.controls.forEach((group) => group.markAllAsTouched());
