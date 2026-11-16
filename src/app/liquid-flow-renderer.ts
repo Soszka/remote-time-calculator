@@ -1,5 +1,6 @@
 import { glyphInteriorDistance } from './liquid-distance-field';
 import { TIME_COLON_GAP_EM, TIME_COLON_OFFSET_EM } from './time-typography';
+import { GlassAnimation } from './card-animation';
 
 // Render the liquid once to a texture, then refract that exact texture through
 // the rounded distance-field surface of the numerals, clipped to each time card.
@@ -15,6 +16,7 @@ varying vec2 uv;
 uniform vec2 resolution;
 uniform float time;
 uniform float variant;
+uniform float effectMode;
 uniform float dark;
 uniform vec3 cool;
 uniform vec3 glint;
@@ -28,23 +30,26 @@ uniform sampler2D glyph;
 uniform sampler2D bevel;
 uniform sampler2D liquid;
 
+float hash(vec2 p) {
+  vec3 q = fract(vec3(p.xyx) * .1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   f = f * f * f * (f * (f * 6. - 15.) + 10.);
-  vec4 h = fract(sin(vec4(dot(i, vec2(127.1, 311.7)),
-    dot(i + vec2(1., 0.), vec2(127.1, 311.7)),
-    dot(i + vec2(0., 1.), vec2(127.1, 311.7)),
-    dot(i + vec2(1., 1.), vec2(127.1, 311.7)))) * 43758.5453);
+  vec4 h = vec4(hash(i), hash(i + vec2(1., 0.)), hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)));
   return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);
 }
 
 vec3 ribbon(vec3 behind, vec2 p, float center, float width, float phase, float strength) {
   float d = (p.y - center) / width;
-  float body = 1. - smoothstep(.91, 1.015, abs(d));
+  float body = 1. - smoothstep(.85, 1.035, abs(d));
   float fold = exp(-pow((d - .69) / .19, 2.));
   float silk = exp(-pow((d - .13) / .68, 2.));
-  float edge = exp(-pow((d - .97) / .032, 2.));
-  float underside = exp(-pow((d + .96) / .045, 2.));
+  float edge = exp(-pow((d - .97) / .065, 2.));
+  float underside = exp(-pow((d + .96) / .08, 2.));
   float light = .48 + .52 * pow(.5 + .5 * sin(p.x * 8.2 + phase), 3.);
   vec3 pearl = mix(vec3(1.), glint, .45 + dark * .25);
   vec3 tint = mix(mix(paper, cool, .33), mix(ink, cool, .18), dark);
@@ -63,13 +68,37 @@ vec3 ribbon(vec3 behind, vec2 p, float center, float width, float phase, float s
 
 vec3 environment(vec2 p) {
   // Incommensurate velocities and continuous domain warping: no reset or CSS loop.
-  float t = time * .78 + variant * 3.73;
+  float t = time * .36 + variant * 3.73;
+  vec3 base = mix(paper, ink, dark);
+  if (effectMode > 1.5) {
+    // An uninterrupted, broad diagonal softbox reflection over smooth glass.
+    // No domain warping, ribbons or ripples: the plane stays perfectly still.
+    vec2 plane = uv + drift - .5;
+    vec2 direction = normalize(vec2(.85, .52 + .12 * sin(t * .23)));
+    float position = dot(plane, direction) - .76 * sin(t * .63);
+    float face = exp(-pow(position / .22, 2.));
+    float shoulder = exp(-pow((position + .18) / .38, 2.));
+    float edge = exp(-pow((position - .055) / .045, 2.));
+    vec3 light = mix(mix(cool, ink, .12), mix(cool, glint, .44), dark);
+    vec3 field = mix(base, light, clamp(face * .57 + shoulder * .16, 0., .73));
+    return field + mix(cool, glint, .55) * edge * mix(.07, .13, dark);
+  }
   p += drift;
   vec2 warp = vec2(noise(p * vec2(2.8, 1.7) + vec2(t * .21, -t * .17)),
     noise(p * vec2(3.1, 2.2) + vec2(-t * .19, t * .23) + 8.4)) - .5;
   p += warp * vec2(.10, .24);
+  if (effectMode > .5) {
+    // Broad studio-light reflections travel over curved glass. Two offset
+    // sweeps keep the motion visible without flashes, pulsing or abrupt resets.
+    float position = p.x + p.y * .24;
+    float sweep = exp(-pow((position - .55 - .72 * sin(t * .61)) / .18, 2.));
+    float echo = exp(-pow((position - .5 - .67 * cos(t * .43 + 1.9)) / .26, 2.));
+    float seam = exp(-pow((p.y - .45 - .2 * sin(p.x * 4. + t * .5)) / .065, 2.));
+    vec3 reflectedLight = mix(mix(cool, ink, .18), mix(cool, glint, .48), dark);
+    vec3 field = mix(base, reflectedLight, clamp(sweep * .62 + echo * .26, 0., .8));
+    return field + mix(cool, glint, .3) * seam * mix(.045, .11, dark);
+  }
   float x = p.x;
-  vec3 base = mix(paper, ink, dark);
   base += cool * (.018 + .032 * (.5 + .5 * sin(p.y * 3. + x * 4. - t * .17)));
   float upper = .86 + .17 * sin(x * 6.1 + 1. + t * .43)
     + .065 * sin(x * 9.2 - t * .57);
@@ -78,11 +107,20 @@ vec3 environment(vec2 p) {
   float lower = .16 + .20 * sin(x * 6.2 - 1. + t * .51)
     + .055 * sin(x * 9.5 - t * .41);
   float crossing = .24 + .26 * cos(x * 4.9 + 2.6 - t * .29);
-  vec3 color = ribbon(base, p, upper, .15 + .045 * sin(x * 4. + t * .71), .8 + t * .49, .95);
-  color = ribbon(color, p, middle, .175 + .055 * sin(x * 5. - t * .53), 2.3 - t * .67, 1.);
-  color = ribbon(color, p, lower, .135 + .040 * cos(x * 4.7 + t * .61), 4.7 + t * .41, .95);
-  color = ribbon(color, p, crossing, .10 + .025 * sin(t * .47 + x * 3.), 1.4 - t * .57, .62);
+  vec3 color = ribbon(base, p, upper, .15 + .045 * sin(x * 4. + t * .71), .8 + t * .49, .76);
+  color = ribbon(color, p, middle, .175 + .055 * sin(x * 5. - t * .53), 2.3 - t * .67, .82);
+  color = ribbon(color, p, lower, .135 + .040 * cos(x * 4.7 + t * .61), 4.7 + t * .41, .76);
+  color = ribbon(color, p, crossing, .10 + .025 * sin(t * .47 + x * 3.), 1.4 - t * .57, .34);
   return color;
+}
+
+vec3 linearColor(vec3 color) {
+  color = clamp(color, 0., 1.);
+  return mix(color / 12.92, pow((color + .055) / 1.055, vec3(2.4)), step(vec3(.04045), color));
+}
+
+vec3 srgbColor(vec3 color) {
+  return mix(color * 12.92, 1.055 * pow(max(color, vec3(0.)), vec3(1. / 2.4)) - .055, step(vec3(.0031308), color));
 }
 
 void main() {
@@ -105,7 +143,8 @@ void main() {
     dot(texture2D(bevel, uv + vec2(pixel.x * 2., 0.)).rb - texture2D(bevel, uv - vec2(pixel.x * 2., 0.)).rb, vec2(256., 1.)),
     dot(texture2D(bevel, uv + vec2(0., pixel.y * 2.)).rb - texture2D(bevel, uv - vec2(0., pixel.y * 2.)).rb, vec2(256., 1.))
   ) * (8. * pixelRatio * 255. / 65535.);
-  float slope = 1. - smoothstep(0., bevelWidth, distance);
+  float localBevel = max(1.2, texture2D(glyph, uv).r * 32.);
+  float slope = 1. - smoothstep(0., min(bevelWidth, localBevel), distance);
   vec2 direction = -gradient / max(length(gradient), .001);
   vec3 n = normalize(vec3(direction * slope, sqrt(max(.002, 1. - slope * slope))));
   // The bevel bends the background by up to ~12 CSS pixels; the face magnifies
@@ -130,6 +169,18 @@ void main() {
   // The polished face reflects light; its centre transmits the moving field.
   float reflection = exp(-pow((uv.y + uv.x * .18 + n.y * .055 - .61) / .14, 2.));
   glass += mix(glint, cool, .25) * reflection * mix(.12, .15, dark);
+  // Preserve readable glass even when a bright reflection crosses a numeral.
+  // Adjust optical density in linear light; the moving refraction remains visible.
+  vec3 weight = vec3(.2126, .7152, .0722);
+  vec3 body = linearColor(glass);
+  vec3 contrastInk = linearColor(mix(ink * .15, mix(glint, vec3(1.), .65), dark));
+  float bgLight = dot(linearColor(bg), weight);
+  float bodyLight = dot(body, weight);
+  float inkLight = dot(contrastInk, weight);
+  float desired = mix((bgLight + .05) / 3.1 - .05, (bgLight + .05) * 3.1 - .05, dark);
+  float correction = dark > .5 ? (desired - bodyLight) / max(.001, inkLight - bodyLight)
+    : (bodyLight - desired) / max(.001, bodyLight - inkLight);
+  glass = srgbColor(mix(body, contrastInk, clamp(correction, 0., 1.)));
   vec3 color = mix(bg, glass, a);
   gl_FragColor = vec4(clamp(color, 0., 1.), 1.);
 }
@@ -165,7 +216,7 @@ export class LiquidFlowRenderer {
   private ratio = 1;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly card: HTMLElement, variant: number,
-    initialValue = '', private active = true) {
+    initialValue = '', private active = true, effect: GlassAnimation = 'liquid') {
     this.value = initialValue;
     const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false });
     if (!gl) throw new Error('Liquid flow renderer unavailable');
@@ -217,6 +268,7 @@ export class LiquidFlowRenderer {
     gl.uniform1i(this.location('bevel'), 1);
     gl.uniform1i(this.location('liquid'), 2);
     gl.uniform1f(this.location('variant'), variant);
+    gl.uniform1f(this.location('effectMode'), effect === 'reflections' ? 1 : effect === 'sheen' ? 2 : 0);
     this.updateTheme();
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(card);
@@ -278,6 +330,19 @@ export class LiquidFlowRenderer {
     this.syncMotion();
   }
 
+  refreshTypography(): void {
+    if (this.disposed) return;
+    this.maskDirty = true;
+    // Angular applies the card's font size and timeline class after child inputs.
+    queueMicrotask(() => this.draw(performance.now()));
+  }
+
+  setEffect(effect: GlassAnimation): void {
+    if (this.disposed) return;
+    this.gl.uniform1f(this.location('effectMode'), effect === 'reflections' ? 1 : effect === 'sheen' ? 2 : 0);
+    this.draw(performance.now());
+  }
+
   copyFrame(target: HTMLCanvasElement): void {
     if (this.disposed) return;
     // Draw and copy in the same task, before WebGL discards its drawing buffer.
@@ -309,7 +374,7 @@ export class LiquidFlowRenderer {
 
   private readonly resize = (): void => {
     if (this.disposed) return;
-    const ratio = Math.min(devicePixelRatio || 1, 1.5);
+    const ratio = Math.min(devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.round(this.card.clientWidth * ratio));
     const h = Math.max(1, Math.round(this.card.clientHeight * ratio));
     // ResizeObserver's initial notification must not rebuild the same mask twice.
@@ -338,6 +403,12 @@ export class LiquidFlowRenderer {
   };
 
   private paintMask(): void {
+    const cardBox = this.card.getBoundingClientRect();
+    const useLayout = this.card.classList.contains('result-time-card');
+    // The incoming panel starts at scaleY(0). Keep the pending typography dirty
+    // until its layout can be measured instead of caching fallback clock centres
+    // that would visibly jump when the next countdown value redraws the mask.
+    if (useLayout && (cardBox.width <= 0 || cardBox.height <= 0)) return;
     const ctx = this.mask.getContext('2d', { willReadFrequently: true })!;
     const soft = this.softMask.getContext('2d', { willReadFrequently: true })!;
     const digits = this.card.querySelector<HTMLElement>('.result-time-value');
@@ -347,35 +418,57 @@ export class LiquidFlowRenderer {
     ctx.clearRect(0, 0, this.mask.width, this.mask.height);
     ctx.save();
     ctx.scale(this.ratio, this.ratio);
-    ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#fff';
-    const metrics = ctx.measureText(this.value);
-    const y = this.card.clientHeight / 2 + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
-    const characters = Array.from(this.value);
-    const glyphMetrics = characters.map(character => ctx.measureText(character));
-    const advances = glyphMetrics.map(metric => metric.width);
-    const tracking = Number.parseFloat(style.letterSpacing) || 0;
-    const fontSize = Number.parseFloat(style.fontSize);
-    const colonGap = fontSize * TIME_COLON_GAP_EM;
-    const colonOffset = fontSize * TIME_COLON_OFFSET_EM;
-    const textWidth = advances.reduce((total, advance) => total + advance, 0)
-      + tracking * Math.max(0, characters.length - 1)
-      + characters.filter(character => character === ':').length * colonGap * 2;
-    let x = (this.card.clientWidth - textWidth) / 2;
     let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-    for (let i = 0; i < characters.length; i++) {
-      const separator = characters[i] === ':';
-      if (separator) x += colonGap;
-      const baseline = y + (separator ? colonOffset : 0);
-      const metric = glyphMetrics[i];
-      ctx.fillText(characters[i], x, baseline);
-      left = Math.min(left, x - metric.actualBoundingBoxLeft);
-      right = Math.max(right, x + metric.actualBoundingBoxRight);
-      top = Math.min(top, baseline - metric.actualBoundingBoxAscent);
-      bottom = Math.max(bottom, baseline + metric.actualBoundingBoxDescent);
-      x += advances[i] + tracking + (separator ? colonGap : 0);
+    const cardStyle = getComputedStyle(this.card);
+    const layoutScaleX = cardBox.width / (this.card.offsetWidth || 1);
+    const layoutScaleY = cardBox.height / (this.card.offsetHeight || 1);
+    const mainY = Number.parseFloat(cardStyle.getPropertyValue('--clock-center-y'));
+    const sideY = Number.parseFloat(cardStyle.getPropertyValue('--side-center-y')) || .67;
+    const clocks = [{ element: digits, value: this.value, cx: .5,
+      cy: Number.isFinite(mainY) ? mainY : .5, offset: Number.isFinite(mainY) ? 0 : Number.parseFloat(style.top) || 0 }];
+    for (const [selector, cx] of [['.timeline-early strong', .13], ['.timeline-late strong', .87]] as const) {
+      const element = this.card.querySelector<HTMLElement>(selector);
+      if (element) clocks.push({ element, value: element.textContent?.trim() ?? '', cx, cy: sideY, offset: 0 });
+    }
+    for (const clock of clocks) {
+      const font = getComputedStyle(clock.element);
+      const fontSize = Number.parseFloat(font.fontSize);
+      ctx.font = `${font.fontStyle} ${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
+      // The red mask channel carries each clock's own bevel width. Smaller
+      // timeline values keep the same glass material as the large main clock.
+      const localBevel = Math.round(Math.min(32, Math.max(1.2, fontSize * .075)) * 255 / 32);
+      ctx.fillStyle = `rgb(${localBevel}, 255, 255)`;
+      const metrics = ctx.measureText(clock.value);
+      const box = clock.element.getBoundingClientRect();
+      const centerX = useLayout ? (box.left - cardBox.left + box.width / 2) / layoutScaleX - this.card.clientLeft
+        : this.card.clientWidth * clock.cx;
+      const centerY = useLayout ? (box.top - cardBox.top + box.height / 2) / layoutScaleY - this.card.clientTop
+        : this.card.clientHeight * clock.cy + clock.offset;
+      const y = centerY + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+      const characters = Array.from(clock.value);
+      const glyphMetrics = characters.map(character => ctx.measureText(character));
+      const advances = glyphMetrics.map(metric => metric.width);
+      const tracking = Number.parseFloat(font.letterSpacing) || 0;
+      const colonGap = fontSize * TIME_COLON_GAP_EM;
+      const colonOffset = fontSize * TIME_COLON_OFFSET_EM;
+      const textWidth = advances.reduce((total, advance) => total + advance, 0)
+        + tracking * Math.max(0, characters.length - 1)
+        + characters.filter(character => character === ':').length * colonGap * 2;
+      let x = centerX - textWidth / 2;
+      for (let i = 0; i < characters.length; i++) {
+        const separator = characters[i] === ':';
+        if (separator) x += colonGap;
+        const baseline = y + (separator ? colonOffset : 0);
+        const metric = glyphMetrics[i];
+        ctx.fillText(characters[i], x, baseline);
+        left = Math.min(left, x - metric.actualBoundingBoxLeft);
+        right = Math.max(right, x + metric.actualBoundingBoxRight);
+        top = Math.min(top, baseline - metric.actualBoundingBoxAscent);
+        bottom = Math.max(bottom, baseline + metric.actualBoundingBoxDescent);
+        x += advances[i] + tracking + (separator ? colonGap : 0);
+      }
     }
     ctx.restore();
     soft.clearRect(0, 0, this.softMask.width, this.softMask.height);
@@ -414,6 +507,12 @@ export class LiquidFlowRenderer {
       surface.data[pixel + 2] = encoded & 255;
       surface.data[pixel + 3] = 255;
     }
+    // The shader reads G as shadow coverage and RB as encoded distance, even
+    // outside the ink crop. Raw white blur pixels there produce rectangular
+    // seams. Initialize the ENTIRE data texture to the encoded empty surface.
+    soft.filter = 'none';
+    soft.fillStyle = '#000';
+    soft.fillRect(0, 0, this.softMask.width, this.softMask.height);
     soft.putImageData(surface, sx, sy);
     const gl = this.gl;
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);

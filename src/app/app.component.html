@@ -1,29 +1,30 @@
-<main class="app-wrapper">
+<main class="app-wrapper" (click)="closeConfig()">
+  <div class="calculator-workspace" [class.configuring]="isConfigOpen()" [class.showing-result]="isResultVisible()" [style.--time-scale]="settings().timeScale / 100">
   <section
     class="panel"
-    [class.compact-panel]="isCompactMode()"
+    [class.compact-panel]="isResultVisible()"
+    [class.config-preview]="isConfigOpen()"
+    [style.--time-scale]="settings().timeScale / 100"
+    [style.--timeline-side-scale]="settings().timelineSideScale / 100"
     [class.switching-to-result]="isSwitchingToResult()"
     [class.switching-to-form]="isSwitchingToForm()"
   >
-    <header class="panel-header" *ngIf="!isCompactMode()">
+    <header class="panel-header" *ngIf="!isResultVisible()">
       <h1>Kalkulator końca pracy</h1>
-      <button
-        type="button"
-        class="icon-button settings-button"
-        (click)="openConfig()"
-        aria-label="Otwórz konfigurację"
-        data-tooltip="Konfiguracja"
-        ><span class="button-sheen" aria-hidden="true"></span>
-          <svg class="control-icon user-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
-        </button>
-      </header>
+      <button type="button" class="icon-button settings-button" (click)="toggleConfig($event)"
+        aria-label="Otwórz konfigurację" aria-controls="config-panel" aria-expanded="false" data-tooltip="Ustawienia"
+      ><span class="button-sheen" aria-hidden="true"></span>
+        <svg class="control-icon user-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+        </svg>
+      </button>
+    </header>
 
     <form
       class="form"
-      *ngIf="!isCompactMode()"
+      *ngIf="!isResultVisible()"
       [formGroup]="form"
+      (ngSubmit)="calculate()"
       novalidate
     >
       <div class="form-row">
@@ -317,9 +318,8 @@
       </div>
 
       <button
-        type="button"
+        type="submit"
         class="primary-button"
-        (click)="calculate()"
         [disabled]="!canCalculate || isSwitchingToResult()"
       ><span class="button-sheen" aria-hidden="true"></span>
         <span>Przelicz</span>
@@ -331,9 +331,9 @@
     </form>
 
     <section *ngIf="resultSurface() as payload" class="result-block"
-      [class.result-cache]="!isCompactMode()"
-      [attr.aria-hidden]="!isCompactMode() ? 'true' : null"
-      [attr.inert]="!isCompactMode() ? '' : null"
+      [class.result-cache]="!isResultVisible()"
+      [attr.aria-hidden]="!isResultVisible() ? 'true' : null"
+      [attr.inert]="!isResultVisible() ? '' : null"
       [class.result-reveal]="isResultRevealing()">
       <div
         class="card highlight-card compact-highlight"
@@ -386,7 +386,7 @@
           <div class="comet comet-right"></div>
         </div>
         <div class="compact-toolbar">
-          <div class="compact-details">
+          <div class="compact-details" *ngIf="!isConfigOpen()">
             <span class="compact-detail">Start: {{ payload.startTime }}</span>
             <span class="compact-detail" *ngIf="payload.adjustmentLabel">
               {{ payload.adjustmentLabel }}
@@ -409,16 +409,21 @@
             >
               <span>{{ payload.progressPercent }}%</span>
             </div>
-            <button type="button" class="edit-button" (click)="editPlan()"><span class="button-sheen" aria-hidden="true"></span>
+            <button type="button" class="edit-button" *ngIf="!isConfigOpen()" (click)="editPlan()"><span class="button-sheen" aria-hidden="true"></span>
               Edytuj
             </button>
           </div>
         </div>
-        <div class="summary-line result-summary">
-          <article class="summary-item result-time-card exit-time-card">
-            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime" [active]="isCompactMode()"></app-liquid-backdrop>
+        <div class="summary-line result-summary" [class.cards-side-by-side]="timeDisplayMode() === 'sideBySide'">
+          <article class="summary-item result-time-card exit-time-card" [class.timeline-card]="settings().timelineEnabled">
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="exit" [value]="payload.endTime" [active]="isResultVisible()" [textScale]="settings().timeScale" [timeline]="settings().timelineEnabled" [sideScale]="settings().timelineSideScale" [earlyValue]="timelineValues()?.earlyEndTime || ''" [lateValue]="timelineValues()?.lateEndTime || ''" [effect]="glassAnimation()"></app-liquid-backdrop>
             <span class="result-time-label">Wyjście</span>
             <strong class="result-time-value" [appTimeValue]="payload.endTime"></strong>
+            <ng-container *ngIf="settings().timelineEnabled && timelineValues() as timeline">
+              <div class="timeline-side timeline-early" aria-label="15 minut wcześniej"><strong [appTimeValue]="timeline.earlyEndTime"></strong></div>
+              <div class="timeline-side timeline-late" aria-label="15 minut później"><strong [appTimeValue]="timeline.lateEndTime"></strong></div>
+              <div class="milestone-track" [class.early-reached]="timeline.reachedEarly" [class.standard-reached]="timeline.reachedStandard" [class.late-reached]="timeline.reachedLate" aria-hidden="true"><i></i><span></span><i class="main-dot"></i><span></span><i></i></div>
+            </ng-container>
           </article>
 
           <div class="exit-slider" *ngIf="showExitSlider()">
@@ -426,7 +431,7 @@
               type="button"
               class="offset-button"
               aria-label="Przesuń wyjście o minutę wcześniej"
-              [disabled]="exitOffsetMinutes() === -flexMinutes"
+              [disabled]="isConfigOpen() || exitOffsetMinutes() === -flexMinutes"
               (click)="adjustExitOffset(-1)"
             ><span class="button-sheen" aria-hidden="true"></span>
               <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -436,14 +441,14 @@
             <div class="offset-control">
               <div class="offset-scale" aria-hidden="true">
                 <div class="offset-track">
-                  <span class="offset-fill" [style.width.%]="exitOffsetPercent()"></span>
+                  <span class="offset-fill" [style.width.%]="isConfigOpen() ? 50 : exitOffsetPercent()"></span>
                 </div>
-                <span class="offset-orb" [style.left.%]="exitOffsetPercent()"></span>
+                <span class="offset-orb" [style.left.%]="isConfigOpen() ? 50 : exitOffsetPercent()"></span>
                 <output
                   class="offset-label"
                   for="exit-offset"
-                  [style.left.%]="exitOffsetPercent()"
-                >{{ exitOffsetLabel() }}</output>
+                  [style.left.%]="isConfigOpen() ? 50 : exitOffsetPercent()"
+                >{{ isConfigOpen() ? '' : exitOffsetLabel() }}</output>
               </div>
               <input
                 id="exit-offset"
@@ -452,7 +457,8 @@
                 [min]="-flexMinutes"
                 [max]="flexMinutes"
                 step="1"
-                [value]="exitOffsetMinutes()"
+                [value]="isConfigOpen() ? 0 : exitOffsetMinutes()"
+                [disabled]="isConfigOpen()"
                 aria-label="Korekta godziny wyjścia w minutach"
                 [attr.aria-valuetext]="exitOffsetLabel() || 'Standardowa godzina wyjścia'"
                 (input)="onExitOffsetInput($event)"
@@ -462,7 +468,7 @@
               type="button"
               class="offset-button"
               aria-label="Przesuń wyjście o minutę później"
-              [disabled]="exitOffsetMinutes() === flexMinutes"
+              [disabled]="isConfigOpen() || exitOffsetMinutes() === flexMinutes"
               (click)="adjustExitOffset(1)"
             ><span class="button-sheen" aria-hidden="true"></span>
               <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -471,10 +477,15 @@
             </button>
           </div>
 
-          <article class="summary-item result-time-card remaining-time-card">
-            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="payload.remainingClockLabel" [active]="isCompactMode()"></app-liquid-backdrop>
+          <article class="summary-item result-time-card remaining-time-card" [class.timeline-card]="settings().timelineEnabled">
+            <app-liquid-backdrop *ngIf="settings().animationsEnabled" variant="remaining" [value]="remainingDisplay()" [active]="isResultVisible()" [textScale]="settings().timeScale" [timeline]="settings().timelineEnabled" [sideScale]="settings().timelineSideScale" [earlyValue]="timelineValues()?.earlyRemaining || ''" [lateValue]="timelineValues()?.lateRemaining || ''" [effect]="glassAnimation()"></app-liquid-backdrop>
             <span class="result-time-label">Czas</span>
-            <strong class="result-time-value" [appTimeValue]="payload.remainingClockLabel"></strong>
+            <strong class="result-time-value" [appTimeValue]="remainingDisplay()"></strong>
+            <ng-container *ngIf="settings().timelineEnabled && timelineValues() as timeline">
+              <div class="timeline-side timeline-early" aria-label="Do wcześniejszego wyjścia"><strong [appTimeValue]="timeline.earlyRemaining"></strong></div>
+              <div class="timeline-side timeline-late" aria-label="Do późniejszego wyjścia"><strong [appTimeValue]="timeline.lateRemaining"></strong></div>
+              <div class="milestone-track" [class.early-reached]="timeline.reachedEarly" [class.standard-reached]="timeline.reachedStandard" [class.late-reached]="timeline.reachedLate" aria-hidden="true"><i></i><span></span><i class="main-dot"></i><span></span><i></i></div>
+            </ng-container>
           </article>
         </div>
         <div class="compact-feedback-box">
@@ -486,23 +497,21 @@
     </section>
   </section>
 
-  <div
-    class="dialog-backdrop"
-    *ngIf="isConfigOpen()"
-    (click)="closeConfig()"
-  >
-    <section
-      class="config-dialog"
-      role="dialog"
-      aria-modal="true"
+    <aside
+      id="config-panel"
+      class="config-dialog config-drawer"
+      [class.is-open]="isConfigOpen()"
+      [attr.inert]="!isConfigOpen() ? '' : null"
+      [attr.aria-hidden]="!isConfigOpen() ? 'true' : null"
+      tabindex="-1"
       aria-labelledby="config-title"
       (click)="$event.stopPropagation()"
     >
       <header class="dialog-header">
-        <h2 id="config-title">Konfiguracja</h2>
+        <h2 id="config-title">Ustawienia</h2>
         <button
           type="button"
-          class="icon-button"
+          class="icon-button config-close"
           (click)="closeConfig()"
           aria-label="Zamknij konfigurację"
         ><span class="button-sheen" aria-hidden="true"></span>
@@ -559,18 +568,36 @@
         </div>
 
         <div class="config-row">
-          <span id="slider-display-label" class="config-label">Wyświetlanie suwaka</span>
-          <div class="title-segment" role="radiogroup" aria-labelledby="slider-display-label">
-            <button type="button" role="radio" [class.active]="settings().sliderEnabled" [attr.aria-checked]="settings().sliderEnabled" (click)="setSliderEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
-            <button type="button" role="radio" [class.active]="!settings().sliderEnabled" [attr.aria-checked]="!settings().sliderEnabled" (click)="setSliderEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
+          <span id="slider-display-label" class="config-label">Układ godzin</span>
+          <div class="title-segment layout-segment" role="radiogroup" aria-labelledby="slider-display-label">
+            <button type="button" role="radio" [class.active]="timeDisplayMode() === 'slider'" [attr.aria-checked]="timeDisplayMode() === 'slider'" (click)="setTimeDisplayMode('slider')"><span class="button-sheen" aria-hidden="true"></span>Suwak</button>
+            <button type="button" role="radio" [class.active]="timeDisplayMode() === 'timeline'" [attr.aria-checked]="timeDisplayMode() === 'timeline'" (click)="setTimeDisplayMode('timeline')"><span class="button-sheen" aria-hidden="true"></span>Oś ±15 min</button>
+            <button type="button" role="radio" [class.active]="timeDisplayMode() === 'standard'" [attr.aria-checked]="timeDisplayMode() === 'standard'" (click)="setTimeDisplayMode('standard')"><span class="button-sheen" aria-hidden="true"></span>Same godziny</button>
+            <button type="button" role="radio" [class.active]="timeDisplayMode() === 'sideBySide'" [attr.aria-checked]="timeDisplayMode() === 'sideBySide'" (click)="setTimeDisplayMode('sideBySide')"><span class="button-sheen" aria-hidden="true"></span>Obok siebie</button>
           </div>
+        </div>
+
+        <div class="config-row size-config-row">
+          <label for="time-size" class="config-label">Rozmiar godzin</label>
+          <input id="time-size" class="size-range" type="range" min="70" max="125" step="1" [value]="settings().timeScale" [style.--range-progress]="((settings().timeScale - 70) / 55 * 100) + '%'" [attr.aria-valuetext]="settings().timeScale + '%'" (input)="setTimeScale('timeScale', $event)" />
+        </div>
+        <div class="config-row size-config-row" *ngIf="settings().timelineEnabled">
+          <label for="timeline-side-size" class="config-label">Rozmiar bocznych godzin</label>
+          <input id="timeline-side-size" class="size-range" type="range" min="70" max="125" step="1" [value]="settings().timelineSideScale" [style.--range-progress]="((settings().timelineSideScale - 70) / 55 * 100) + '%'" [attr.aria-valuetext]="settings().timelineSideScale + '%'" (input)="setTimeScale('timelineSideScale', $event)" />
         </div>
 
         <div class="config-row">
           <span id="animations-display-label" class="config-label">Wyświetlanie animacji</span>
-          <div class="title-segment" role="radiogroup" aria-labelledby="animations-display-label">
-            <button type="button" role="radio" [class.active]="settings().animationsEnabled" [attr.aria-checked]="settings().animationsEnabled" (click)="setAnimationsEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
-            <button type="button" role="radio" [class.active]="!settings().animationsEnabled" [attr.aria-checked]="!settings().animationsEnabled" (click)="setAnimationsEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
+          <div class="title-segment animation-segment" role="radiogroup" aria-labelledby="animations-display-label">
+            <button *ngFor="let option of animationOptions" type="button" role="radio" [class.active]="settings().cardAnimation === option.value" [attr.aria-checked]="settings().cardAnimation === option.value" (click)="setCardAnimation(option.value)"><span class="button-sheen" aria-hidden="true"></span>{{ option.label }}</button>
+          </div>
+        </div>
+
+        <div class="config-row" *ngIf="settings().cardAnimation === 'none'">
+          <span id="card-accent-label" class="config-label">Kolor przewodni na kartach</span>
+          <div class="title-segment" role="radiogroup" aria-labelledby="card-accent-label">
+            <button type="button" role="radio" [class.active]="settings().cardAccentEnabled" [attr.aria-checked]="settings().cardAccentEnabled" (click)="setCardAccentEnabled(true)"><span class="button-sheen" aria-hidden="true"></span>Tak</button>
+            <button type="button" role="radio" [class.active]="!settings().cardAccentEnabled" [attr.aria-checked]="!settings().cardAccentEnabled" (click)="setCardAccentEnabled(false)"><span class="button-sheen" aria-hidden="true"></span>Nie</button>
           </div>
         </div>
 
@@ -638,7 +665,7 @@
           </div>
         </div>
       </form>
-    </section>
+    </aside>
   </div>
 
   <div class="toast" *ngIf="toastMessage() as message" role="status">

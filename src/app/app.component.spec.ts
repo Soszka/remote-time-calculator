@@ -96,6 +96,56 @@ describe('AppComponent', () => {
     app.undertimeMakeup.setValue({ hours, minutes });
   }
 
+  it('submits through the native form path used by Enter and calculates only once per submit or button click', () => {
+    spyOn(window, 'matchMedia').and.returnValue({ matches: true } as MediaQueryList);
+    const app = createApp();
+    app.setCardAnimation('none');
+    app.form.controls.startTime.setValue('08:00');
+    fixture!.detectChanges();
+    const page = fixture!.nativeElement as HTMLElement;
+    let form = page.querySelector<HTMLFormElement>('form.form')!;
+    expect(form.querySelector<HTMLButtonElement>('.primary-button')!.type).toBe('submit');
+    const submit = spyOn(app, 'calculate').and.callThrough();
+    let submitted: SubmitEvent | undefined;
+    form.addEventListener('submit', event => submitted = event as SubmitEvent);
+    form.requestSubmit();
+    fixture!.detectChanges();
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(submitted?.defaultPrevented).toBeTrue();
+    expect(app.result()?.endTime).toBe('16:15');
+    expect(app.isCompactMode()).toBeTrue();
+    app.editPlan(false);
+    app.form.controls.startTime.setValue('07:30');
+    fixture!.detectChanges();
+    form = page.querySelector<HTMLFormElement>('form.form')!;
+    form.querySelector<HTMLButtonElement>('.primary-button')!.click();
+    fixture!.detectChanges();
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(app.result()?.endTime).toBe('15:45');
+  });
+
+  it('keeps invalid or incomplete plans in the form when submitted with Enter', () => {
+    const app = createApp();
+    app.setCardAnimation('none');
+    const page = fixture!.nativeElement as HTMLElement;
+    for (const value of ['', '05:29', '08:60']) {
+      app.form.controls.startTime.setValue(value);
+      fixture!.detectChanges();
+      page.querySelector<HTMLFormElement>('form.form')!.requestSubmit();
+      fixture!.detectChanges();
+      expect(app.result()).toBeNull();
+      expect(app.isCompactMode()).toBeFalse();
+      expect(app.form.controls.startTime.touched).toBeTrue();
+      expect(page.querySelector<HTMLButtonElement>('.primary-button')!.disabled).toBeTrue();
+    }
+    app.form.controls.startTime.setValue('08:00');
+    addBreak(app, '10:00', '');
+    fixture!.detectChanges();
+    page.querySelector<HTMLFormElement>('form.form')!.requestSubmit();
+    expect(app.result()).toBeNull();
+    expect(localStorage.getItem('workEndCalculator.dailyPlan')).toBeNull();
+  });
+
   it('should create the app', () => {
     const app = createApp();
     expect(app).toBeTruthy();
@@ -697,16 +747,17 @@ describe('AppComponent', () => {
     }
   });
 
-  it('migrates legacy timeline preferences to the shared slider', () => {
+  it('restores legacy timeline preferences as a timeline and allows switching back to the slider', () => {
     localStorage.setItem('workEndCalculator.settings', JSON.stringify({
       endTimeDisplayMode: 'timeline', remainingTimeDisplayMode: 'standard',
     }));
     const app = createApp();
-    expect(app.settings().sliderEnabled).toBeTrue();
+    expect(app.settings().timelineEnabled).toBeTrue();
+    expect(app.settings().sliderEnabled).toBeFalse();
     expect(app.settings().animationsEnabled).toBeTrue();
     app.form.controls.startTime.setValue('08:00');
     calculate(app);
-    expect(app.showExitSlider()).toBeTrue();
+    expect(app.showExitSlider()).toBeFalse();
     app.setSliderEnabled(false);
     expect(app.showExitSlider()).toBeFalse();
     app.setSliderEnabled(true);
@@ -728,6 +779,71 @@ describe('AppComponent', () => {
     const app = createApp();
     expect(app.settings().sliderEnabled).toBeFalse();
     expect(app.settings().animationsEnabled).toBeTrue();
+  });
+
+  it('migrates separate legacy sizes to one shared size and restores the independent timeline side size', () => {
+    localStorage.setItem('workEndCalculator.settings', JSON.stringify({
+      timelineEnabled: true, sliderEnabled: false, exitTimeScale: 120, remainingTimeScale: 75,
+    }));
+    const app = createApp();
+    expect(app.timeDisplayMode()).toBe('timeline');
+    expect(app.settings().timeScale).toBe(120);
+    expect(app.settings().timelineSideScale).toBe(100);
+    fixture!.destroy();
+    localStorage.setItem('workEndCalculator.settings', JSON.stringify({
+      timeScale: 900, timelineSideScale: '75',
+    }));
+    const restored = createApp();
+    expect(restored.settings().timeScale).toBe(125);
+    expect(restored.settings().timelineSideScale).toBe(100);
+  });
+
+  it('restores a saved optical effect and prioritizes it over the legacy animation boolean', () => {
+    localStorage.setItem('workEndCalculator.settings', JSON.stringify({ cardAnimation: 'sheen', animationsEnabled: false }));
+    const app = createApp();
+    expect(app.settings().cardAnimation).toBe('sheen');
+    expect(app.settings().animationsEnabled).toBeTrue();
+    expect(app.glassAnimation()).toBe('sheen');
+    app.setCardAnimation('reflections');
+    expect(JSON.parse(localStorage.getItem('workEndCalculator.settings')!).cardAnimation).toBe('reflections');
+    fixture!.destroy();
+    localStorage.setItem('workEndCalculator.settings', JSON.stringify({ cardAnimation: 'aurora', animationsEnabled: true }));
+    const restored = createApp();
+    expect(restored.settings().cardAnimation).toBe('reflections');
+  });
+
+  for (const retired of ['prism', 'streaks']) {
+    it(`migrates the retired ${retired} to sheen without changing any other preference`, () => {
+      localStorage.setItem('workEndCalculator.settings', JSON.stringify({
+        cardAnimation: retired, animationsEnabled: false, theme: 'light', accentColor: 'green',
+        timelineEnabled: true, sliderEnabled: false, timeScale: 110, timelineSideScale: 75,
+      }));
+      const app = createApp();
+      expect(app.settings()).toEqual(jasmine.objectContaining({
+        cardAnimation: 'sheen', animationsEnabled: true, theme: 'light', accentColor: 'green',
+        timelineEnabled: true, sliderEnabled: false, timeScale: 110, timelineSideScale: 75,
+      }));
+      expect(app.glassAnimation()).toBe('sheen');
+    });
+  }
+
+  it('defaults old settings to accented clocks and restores the neutral choice independently from the selected animation', () => {
+    localStorage.setItem('workEndCalculator.settings', JSON.stringify({ cardAnimation: 'none', accentColor: 'red' }));
+    const app = createApp();
+    expect(app.settings().cardAccentEnabled).toBeTrue();
+    app.setCardAccentEnabled(false);
+    expect(app.neutralTimeCardsClass).toBeTrue();
+    app.setCardAnimation('reflections');
+    expect(app.neutralTimeCardsClass).toBeFalse();
+    fixture!.destroy();
+    const restored = createApp();
+    expect(restored.settings().cardAccentEnabled).toBeFalse();
+    expect(restored.settings().cardAnimation).toBe('reflections');
+    expect(restored.accentRedClass).toBeTrue();
+    restored.setCardAnimation('none');
+    expect(restored.neutralTimeCardsClass).toBeTrue();
+    restored.setCardAccentEnabled(true);
+    expect(restored.neutralTimeCardsClass).toBeFalse();
   });
 
   it('keeps both clocks and the offset ticking through every visual preference combination', () => {
@@ -767,7 +883,7 @@ describe('AppComponent', () => {
     }
   });
 
-  it('replaces the old card selectors with independent accessible yes/no settings', () => {
+  it('provides accessible layout choices and an independent animation preference', () => {
     const app = createApp();
     app.openConfig();
     fixture!.detectChanges();
@@ -780,9 +896,11 @@ describe('AppComponent', () => {
     fixture!.detectChanges();
     expect(animationOptions[1].getAttribute('aria-checked')).toBe('true');
     expect(sliderOptions[0].getAttribute('aria-checked')).toBe('true');
+    expect(sliderOptions.length).toBe(4);
     sliderOptions[1].click();
     fixture!.detectChanges();
     expect(app.settings().sliderEnabled).toBeFalse();
+    expect(app.settings().timelineEnabled).toBeTrue();
     expect(app.settings().animationsEnabled).toBeFalse();
   });
 
@@ -804,6 +922,81 @@ describe('AppComponent', () => {
     expect(app.result()?.endTime).toBe('17:00');
     expect(app.result()?.adjustmentLabel).toBe('Odrobienie niedoczasu: 30min');
   });
+
+  for (const layout of ['slider', 'timeline', 'standard', 'sideBySide'] as const) {
+    for (const adjustment of ['overtimePickup', 'undertimeMakeup'] as const) {
+      it(`preserves a real plan through settings, recalculation and reload with ${layout}/${adjustment} and every effect`, () => {
+        jasmine.clock().install();
+        spyOn(window, 'matchMedia').and.returnValue({ matches: true } as MediaQueryList);
+        spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
+        const baseline = adjustment === 'overtimePickup' ? '15:45' : '17:15';
+        const adjusted = adjustment === 'overtimePickup' ? '15:52' : '17:22';
+        const remaining = adjustment === 'overtimePickup' ? '03:52:00' : '05:22:00';
+        const afterMinute = adjustment === 'overtimePickup' ? '03:50:59' : '05:20:59';
+        try {
+          let app = createApp();
+          app.form.controls.startTime.setValue('07:45');
+          addBreak(app, '09:30', '09:40');
+          addBreak(app, '11:00', '11:20');
+          if (adjustment === 'overtimePickup') setOvertimePickup(app, 0, 45);
+          else setUndertimeMakeup(app, 0, 45);
+          app.setTimeDisplayMode(layout);
+          for (const effect of ['liquid', 'none', 'reflections', 'sheen'] as const) {
+            jasmine.clock().mockDate(new Date(2026, 10, 16, 12));
+            app.setCardAnimation(effect);
+            app.setCardAccentEnabled(effect !== 'none');
+            calculate(app);
+            expect(app.result()?.endTime).toBe(baseline);
+            app.setExitOffset(7);
+            fixture!.detectChanges();
+            let page = fixture!.nativeElement as HTMLElement;
+            expect(page.querySelector('.exit-time-card > strong')?.textContent).toBe(adjusted);
+            expect(page.querySelector('.remaining-time-card > strong')?.textContent).toBe(remaining);
+            expect(app.result()?.breaksLabel).toBe('Przerwy: 30min');
+            const savedPlan = localStorage.getItem('workEndCalculator.dailyPlan');
+            const entered = app.form.getRawValue();
+
+            app.openConfig();
+            app.setDarkMode(!app.darkModeClass);
+            app.setTimeScale('timeScale', { target: { value: '125' } } as unknown as Event);
+            app.setExitOffset(-15);
+            jasmine.clock().tick(61000);
+            fixture!.detectChanges();
+            expect(app.resultSurface()?.endTime).toBe('00:00');
+            expect(app.remainingDisplay()).toBe('08:15:00');
+            expect(app.result()?.endTime).toBe(adjusted);
+            expect(app.exitOffsetMinutes()).toBe(7);
+            expect(localStorage.getItem('workEndCalculator.dailyPlan')).toBe(savedPlan);
+            app.closeConfig();
+            expect(app.form.getRawValue()).toEqual(entered);
+
+            calculate(app);
+            expect(app.exitOffsetMinutes()).toBe(0);
+            expect(app.result()?.endTime).toBe(baseline);
+            app.setExitOffset(7);
+            expect(app.result()?.remainingClockLabel).toBe(afterMinute);
+            const expected = app.result();
+            fixture!.destroy();
+            app = createApp();
+            fixture!.detectChanges();
+            page = fixture!.nativeElement;
+            expect(app.form.getRawValue()).toEqual(entered);
+            expect(app.timeDisplayMode()).toBe(layout);
+            expect(app.settings().cardAnimation).toBe(effect);
+            expect(app.settings().cardAccentEnabled).toBe(effect !== 'none');
+            expect(app.result()).toEqual(jasmine.objectContaining({
+              endTime: adjusted, remainingClockLabel: afterMinute,
+              breaksLabel: expected!.breaksLabel, adjustmentLabel: expected!.adjustmentLabel,
+              state: 'inProgress', progressPercent: expected!.progressPercent,
+            }));
+            expect(page.querySelector('.remaining-time-card > strong')?.textContent).toBe(afterMinute);
+            jasmine.clock().tick(1000);
+            expect(app.result()?.remainingClockLabel).toBe(afterMinute.slice(0, -2) + '58');
+          }
+        } finally { jasmine.clock().uninstall(); }
+      });
+    }
+  }
 
   it('finishes early and resumes ticking when the selected exit moves into the future', () => {
     jasmine.clock().install();
@@ -1163,6 +1356,8 @@ describe('AppComponent', () => {
     calculate(app);
     expect(app.result()?.endTime).toBe('16:15');
     expect(JSON.parse(localStorage.getItem('workEndCalculator.dailyPlan')!).breaks).toEqual([]);
+    fixture!.destroy();
+    fixture = null;
   }));
 
   for (const kind of ['overtimePickup', 'undertimeMakeup'] as const) {
@@ -1181,6 +1376,8 @@ describe('AppComponent', () => {
       expect(app.result()?.endTime).toBe('16:15');
       expect(app.result()?.adjustmentLabel).toBeNull();
       expect(JSON.parse(localStorage.getItem('workEndCalculator.dailyPlan')!).adjustmentPanels[kind]).toBeFalse();
+      fixture!.destroy();
+      fixture = null;
     }));
   }
 
@@ -1201,6 +1398,8 @@ describe('AppComponent', () => {
     expect(app.canCalculate).toBeTrue();
     calculate(app);
     expect(app.result()?.endTime).toBe('16:15');
+    fixture!.destroy();
+    fixture = null;
   }));
 
   it('preserves the 8h 15min rule for every permitted unadjusted start minute and rejects the first minute beyond 21:00', () => {

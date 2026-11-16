@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, NgZone, OnDestroy, computed, effect, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostBinding, HostListener, NgZone, OnDestroy, computed, effect, signal } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -16,6 +16,8 @@ import { ButtonRippleDirective } from './button-ripple.directive';
 import { TimeValueComponent } from './time-value.component';
 import { VIEW_MORPH_MS, ViewMorph, ViewMorphSnapshot } from './view-morph';
 import { PANEL_MOTION, PanelMotionDirective } from './panel-motion.directive';
+import { SettingsMotion } from './settings-motion';
+import { CARD_ANIMATIONS, CardAnimation, GlassAnimation } from './card-animation';
 interface BreakFormGroup extends FormGroup<{
   start: FormControl<string | null>;
   end: FormControl<string | null>;
@@ -33,6 +35,7 @@ type AccentColor = 'violet' | 'green' | 'red' | 'pink' | 'yellow' | 'black' | 'w
 type AccentSelection = Exclude<AccentColor, 'black' | 'white'> | 'monochrome';
 type FavoriteHour = 6 | 7 | 8 | null;
 type TabDisplayMode = 'endTime' | 'remainingTime';
+type TimeDisplayMode = 'slider' | 'timeline' | 'standard' | 'sideBySide';
 
 interface ResultPayload {
   endTime: string;
@@ -52,7 +55,13 @@ interface AppSettings {
   favoriteHour: FavoriteHour;
   tabDisplayMode: TabDisplayMode;
   sliderEnabled: boolean;
+  timelineEnabled: boolean;
+  cardsSideBySide: boolean;
+  timeScale: number;
+  timelineSideScale: number;
   animationsEnabled: boolean;
+  cardAnimation: CardAnimation;
+  cardAccentEnabled: boolean;
   accentColor: AccentSelection;
 }
 
@@ -100,7 +109,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     favoriteHour: null,
     tabDisplayMode: 'endTime',
     sliderEnabled: true,
+    timelineEnabled: false,
+    cardsSideBySide: false,
+    timeScale: 100,
+    timelineSideScale: 100,
     animationsEnabled: true,
+    cardAnimation: 'liquid',
+    cardAccentEnabled: true,
     accentColor: 'violet',
   };
 
@@ -460,12 +475,22 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   readonly result = signal<ResultPayload | null>(null);
   private readonly surfacePrepared = signal(false);
+  private readonly resultRemainingSeconds = signal(0);
+  private readonly configPreview: ResultPayload = {
+    endTime: '00:00', remainingLabel: '8 godzin i 15 minut', remainingClockLabel: '08:15:00',
+    remainingTitleLabel: '8 godzin i 15 minut', progressPercent: 0,
+    message: 'Tak będzie wyglądać Twój widok.', state: 'inProgress',
+    startTime: '', adjustmentLabel: null, breaksLabel: null,
+  };
   // Only used by the invisible, inert GPU preparation surface. Never saved as a plan.
-  readonly resultSurface = computed<ResultPayload | null>(() => this.result() ?? (this.surfacePrepared() ? {
+  readonly resultSurface = computed<ResultPayload | null>(() => this.isConfigOpen() ? this.configPreview : this.result() ?? (this.surfacePrepared() ? {
     endTime: '16:15', remainingLabel: '', remainingClockLabel: '08:15:00',
     remainingTitleLabel: '', progressPercent: 0, message: '', state: 'beforeStart',
     startTime: '', adjustmentLabel: null, breaksLabel: null,
   } : null));
+  readonly remainingDisplay = computed(() => this.resultSurface()?.remainingClockLabel ?? '08:15:00');
+  readonly animationOptions = CARD_ANIMATIONS;
+  readonly glassAnimation = computed<GlassAnimation>(() => this.settings().cardAnimation === 'none' ? 'liquid' : this.settings().cardAnimation as GlassAnimation);
   readonly exitOffsetMinutes = signal(0);
   readonly exitOffsetPercent = computed(() =>
     ((this.exitOffsetMinutes() + this.flexMinutes) / (2 * this.flexMinutes)) * 100,
@@ -477,14 +502,33 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   readonly scheduleError = signal<string | null>(null);
   readonly isConfigOpen = signal(false);
   readonly isCompactMode = signal(false);
+  readonly isResultVisible = computed(() => this.isCompactMode() || this.isConfigOpen());
   readonly isSwitchingToResult = signal(false);
   readonly isSwitchingToForm = signal(false);
   readonly isResultRevealing = signal(false);
   readonly toastMessage = signal<string | null>(null);
   readonly settings = signal<AppSettings>(this.defaultSettings);
+  readonly timeDisplayMode = computed<TimeDisplayMode>(() => this.settings().timelineEnabled
+    ? 'timeline' : this.settings().sliderEnabled ? 'slider' : this.settings().cardsSideBySide ? 'sideBySide' : 'standard');
+  readonly timelineValues = computed(() => {
+    const payload = this.resultSurface();
+    if (!payload) return null;
+    const end = this.parseTime(payload.endTime) ?? 0;
+    const remaining = this.isConfigOpen() ? this.baseMinutes * 60 : this.resultRemainingSeconds();
+    const clock = (minutes: number) => this.formatMinutes((minutes + 24 * 60) % (24 * 60));
+    return {
+      earlyEndTime: clock(end - this.flexMinutes),
+      lateEndTime: clock(end + this.flexMinutes),
+      earlyRemaining: this.formatRemainingClock(Math.max(0, remaining - this.flexMinutes * 60)).slice(0, -3),
+      lateRemaining: this.formatRemainingClock(Math.max(0, remaining + this.flexMinutes * 60)).slice(0, -3),
+      reachedEarly: remaining <= this.flexMinutes * 60,
+      reachedStandard: remaining <= 0,
+      reachedLate: remaining <= -this.flexMinutes * 60,
+    };
+  });
   readonly showExitSlider = computed(() =>
-    this.isCompactMode() &&
-    this.settings().sliderEnabled,
+    this.isResultVisible() &&
+    this.timeDisplayMode() === 'slider',
   );
   readonly removingBreaks = signal<ReadonlySet<BreakFormGroup>>(
     new Set<BreakFormGroup>(),
@@ -509,6 +553,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
   private resultTransitionTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly viewMorph: ViewMorph;
+  private readonly settingsMotion: SettingsMotion;
   private warmupIdle: number | null = null;
   private warmupTimeout: ReturnType<typeof setTimeout> | null = null;
   private dynamicCardTimeouts: ReturnType<typeof setTimeout>[] = [];
@@ -525,11 +570,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   constructor(
     private readonly fb: FormBuilder,
     private readonly title: Title,
-    element: ElementRef<HTMLElement>,
+    private readonly element: ElementRef<HTMLElement>,
     private readonly changeDetector: ChangeDetectorRef,
     private readonly zone: NgZone,
   ) {
     this.viewMorph = new ViewMorph(element.nativeElement);
+    this.settingsMotion = new SettingsMotion(element.nativeElement);
     const settings = this.loadSettings();
     this.settings.set(settings);
     this.configForm.patchValue(
@@ -598,6 +644,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     return !this.settings().animationsEnabled;
   }
 
+  @HostBinding('class.neutral-time-cards')
+  get neutralTimeCardsClass(): boolean {
+    return this.settings().cardAnimation === 'none' && !this.settings().cardAccentEnabled;
+  }
+
   @HostBinding('class.accent-violet')
   get accentVioletClass(): boolean {
     return this.getActiveAccent(this.settings()) === 'violet';
@@ -660,6 +711,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.clearToast();
     this.clearResultTransition();
     this.viewMorph.dispose();
+    this.settingsMotion.dispose();
     this.clearDynamicCardTimeouts();
     this.clearDynamicCardHighlightTimeouts();
   }
@@ -677,6 +729,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   openConfig(): void {
+    if (this.isConfigOpen()) return;
+    this.settingsMotion.cancel();
+    const origin = this.settingsMotion.capture();
+    this.stopCountdownTimer();
+    this.clearResultTransition();
+    this.viewMorph.cancel();
     const settings = this.settings();
     this.configForm.patchValue(
       {
@@ -691,10 +749,67 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     );
     this.configForm.controls.favoriteHour.markAsUntouched();
     this.isConfigOpen.set(true);
+    this.changeDetector.detectChanges();
+    this.zone.runOutsideAngular(() => this.settingsMotion.open(origin));
+    this.element.nativeElement.querySelector<HTMLElement>('.config-drawer')?.focus({ preventScroll: true });
   }
 
   closeConfig(): void {
+    if (!this.isConfigOpen()) return;
+    const snapshot = this.settingsMotion.captureClose();
     this.isConfigOpen.set(false);
+    this.isCompactMode.set(false);
+    this.changeDetector.detectChanges();
+    this.zone.runOutsideAngular(() => this.settingsMotion.close(snapshot));
+    this.element.nativeElement.querySelector<HTMLElement>('.settings-button')?.focus({ preventScroll: true });
+  }
+
+  toggleConfig(event: Event): void {
+    event.stopPropagation();
+    this.isConfigOpen() ? this.closeConfig() : this.openConfig();
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onConfigEscape(event: Event): void {
+    if (!this.isConfigOpen()) return;
+    event.preventDefault();
+    this.closeConfig();
+  }
+
+  setTimeDisplayMode(mode: TimeDisplayMode): void {
+    const next = { ...this.settings(), sliderEnabled: mode === 'slider', timelineEnabled: mode === 'timeline', cardsSideBySide: mode === 'sideBySide' };
+    this.settings.set(next);
+    this.configForm.controls.sliderEnabled.setValue(next.sliderEnabled, { emitEvent: false });
+    this.saveSettings(next);
+    if (this.isCompactMode() && !this.isConfigOpen()) {
+      this.updateCountdown();
+      this.startCountdown();
+    }
+  }
+
+  setTimeScale(kind: 'timeScale' | 'timelineSideScale', event: Event): void {
+    const next = { ...this.settings(), [kind]: this.normalizeTimeScale(Number((event.target as HTMLInputElement).value)) };
+    this.settings.set(next);
+    this.saveSettings(next);
+  }
+
+  private normalizeTimeScale(value: unknown): number {
+    return typeof value === 'number' && Number.isFinite(value)
+      ? Math.min(125, Math.max(70, Math.round(value))) : 100;
+  }
+
+  setCardAnimation(cardAnimation: CardAnimation): void {
+    const enabled = cardAnimation !== 'none';
+    const next = { ...this.settings(), cardAnimation, animationsEnabled: enabled };
+    this.settings.set(next);
+    this.configForm.controls.animationsEnabled.setValue(enabled, { emitEvent: false });
+    this.saveSettings(next);
+  }
+
+  setCardAccentEnabled(enabled: boolean): void {
+    const next = { ...this.settings(), cardAccentEnabled: enabled };
+    this.settings.set(next);
+    this.saveSettings(next);
   }
 
   setDarkMode(enabled: boolean): void {
@@ -840,7 +955,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   setExitOffset(value: number): void {
-    if (!this.isCompactMode() || this.countdownBaseTargetSeconds === null) {
+    if (this.isConfigOpen() || !this.isCompactMode() || this.countdownBaseTargetSeconds === null) {
       return;
     }
 
@@ -958,6 +1073,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     }
 
     let diffSeconds = targetSecondsTotal - nowSecondsTotal;
+    this.resultRemainingSeconds.set(diffSeconds);
     if (diffSeconds < 0 || workFinished) {
       diffSeconds = 0;
     }
@@ -1380,22 +1496,37 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         endTimeDisplayMode?: unknown;
         remainingTimeDisplayMode?: unknown;
         accentByTheme?: unknown;
+        exitTimeScale?: unknown;
+        remainingTimeScale?: unknown;
       };
       const theme = parsedSettings.theme === 'dark' || parsedSettings.theme === 'light'
         ? parsedSettings.theme : this.defaultSettings.theme;
+      const storedAnimation = (parsedSettings as { cardAnimation?: unknown }).cardAnimation;
+      const cardAnimation: CardAnimation = storedAnimation === 'aurora' ? 'reflections'
+        : storedAnimation === 'prism' || storedAnimation === 'streaks' ? 'sheen'
+        : CARD_ANIMATIONS.some(option => option.value === storedAnimation)
+          ? storedAnimation as CardAnimation : parsedSettings.animationsEnabled === false ? 'none' : 'liquid';
       return {
         theme,
         favoriteHour: this.normalizeFavoriteHour(parsedSettings.favoriteHour),
         tabDisplayMode: this.normalizeTabDisplayMode(
           parsedSettings.tabDisplayMode,
         ),
-        // Either legacy card option enabled the same shared slider.
+        // Preserve old timeline layouts; explicit newer preferences take priority.
         sliderEnabled: typeof parsedSettings.sliderEnabled === 'boolean'
           ? parsedSettings.sliderEnabled
-          : parsedSettings.endTimeDisplayMode !== 'standard' || parsedSettings.remainingTimeDisplayMode !== 'standard',
-        animationsEnabled: typeof parsedSettings.animationsEnabled === 'boolean'
-          ? parsedSettings.animationsEnabled
-          : this.defaultSettings.animationsEnabled,
+          : parsedSettings.endTimeDisplayMode === 'timeline' || parsedSettings.remainingTimeDisplayMode === 'timeline'
+            ? false : parsedSettings.endTimeDisplayMode !== 'standard' || parsedSettings.remainingTimeDisplayMode !== 'standard',
+        timelineEnabled: typeof parsedSettings.timelineEnabled === 'boolean'
+          ? parsedSettings.timelineEnabled
+          : typeof parsedSettings.sliderEnabled !== 'boolean' &&
+            (parsedSettings.endTimeDisplayMode === 'timeline' || parsedSettings.remainingTimeDisplayMode === 'timeline'),
+        cardsSideBySide: parsedSettings.cardsSideBySide === true,
+        timeScale: this.normalizeTimeScale(parsedSettings.timeScale ?? parsedSettings.exitTimeScale ?? parsedSettings.remainingTimeScale),
+        timelineSideScale: this.normalizeTimeScale(parsedSettings.timelineSideScale),
+        animationsEnabled: cardAnimation !== 'none',
+        cardAnimation,
+        cardAccentEnabled: parsedSettings.cardAccentEnabled !== false,
         accentColor: this.normalizeAccentSelection(
           parsedSettings.accentColor, parsedSettings.accentByTheme, theme,
         ),
@@ -1459,6 +1590,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     const nextSettings: AppSettings = {
       ...this.settings(),
       [kind]: enabled,
+      ...(kind === 'sliderEnabled' ? { timelineEnabled: false, cardsSideBySide: false } : {}),
+      ...(kind === 'animationsEnabled' ? { cardAnimation: enabled ? this.settings().cardAnimation === 'none' ? 'liquid' : this.settings().cardAnimation : 'none' as CardAnimation } : {}),
     };
     this.settings.set(nextSettings);
     this.saveSettings(nextSettings);
@@ -1682,7 +1815,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private startCountdown(): void {
-    if (this.countdownBaseTargetSeconds === null || this.result()?.state === 'complete') {
+    if (this.isConfigOpen() || this.countdownBaseTargetSeconds === null || this.countdownFinished()) {
       this.stopCountdownTimer();
       return;
     }
@@ -1692,10 +1825,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
     this.countdownInterval = setInterval(() => {
       this.updateCountdown();
-      if (this.result()?.state === 'complete') {
+      if (this.countdownFinished()) {
         this.stopCountdownTimer();
       }
     }, 1000);
+  }
+
+  private countdownFinished(): boolean {
+    return this.result()?.state === 'complete' &&
+      (!this.settings().timelineEnabled || this.resultRemainingSeconds() <= -this.flexMinutes * 60);
   }
 
   private updateCountdown(preserveMessage = false): void {
@@ -1711,8 +1849,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     const now = new Date();
     const nowSecondsTotal = this.countdownDateKey === this.getTodayKey(now)
       ? now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
-      : Math.max(target, start);
+      : Math.max(target + this.flexMinutes * 60, start);
     const diffSeconds = Math.max(0, target - nowSecondsTotal);
+    this.resultRemainingSeconds.set(target - nowSecondsTotal);
     const remainingTitleLabel = this.formatRemainingMessage(diffSeconds);
 
     this.result.update((current) => {

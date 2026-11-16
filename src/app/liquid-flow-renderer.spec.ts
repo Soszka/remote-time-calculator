@@ -217,6 +217,35 @@ describe('LiquidFlowRenderer lifecycle', () => {
     }
   });
 
+  it('initializes every pixel of the bevel data texture, including pixels beyond the cropped blur', () => {
+    card.style.cssText = 'width:600px;height:180px;position:relative';
+    const flow = create();
+    for (const value of ['08:15:00', '00:00', '']) {
+      flow.setValue(value);
+      const surface = gl.texImage2D.calls.allArgs().at(-1)!.at(-1) as HTMLCanvasElement;
+      const pixels = surface.getContext('2d')!.getImageData(0, 0, surface.width, surface.height).data;
+      for (let index = 0; index < pixels.length; index += 4) {
+        expect(pixels[index + 3]).withContext(`Uninitialized surface at ${index / 4}`).toBe(255);
+        // Empty pixels must encode zero distance and zero shadow, never raw white blur RGB.
+        if (index < surface.width * 4 || index >= pixels.length - surface.width * 4) {
+          expect(Array.from(pixels.slice(index, index + 3))).toEqual([0, 0, 0]);
+        }
+      }
+    }
+  });
+
+  it('repaints the clock after a font-size change without replacing its GPU resources', async () => {
+    const flow = create();
+    const uploads = gl.texImage2D.calls.count();
+    const paint = spyOn(CanvasRenderingContext2D.prototype, 'fillText').and.callThrough();
+    card.querySelector<HTMLElement>('.result-time-value')!.style.fontSize = '20px';
+    flow.refreshTypography();
+    await Promise.resolve();
+    expect(paint).toHaveBeenCalled();
+    expect(gl.texImage2D.calls.count()).toBe(uploads + 2);
+    expect(gl.createProgram).toHaveBeenCalledTimes(1);
+  });
+
   it('optically centres and spaces both colons in the glass countdown mask', () => {
     const paint = spyOn(CanvasRenderingContext2D.prototype, 'fillText').and.callThrough();
     const flow = create();
@@ -237,6 +266,85 @@ describe('LiquidFlowRenderer lifecycle', () => {
     const left = calls[0][1];
     const right = calls[7][1] + ctx.measureText('7').width;
     expect(left).toBeCloseTo(card.clientWidth - right, 4);
+  });
+
+  it('switches between all three optical effects without recompiling shaders or rebuilding clock textures', () => {
+    const flow = create();
+    const uploads = gl.texImage2D.calls.count();
+    for (const [effect, expected] of [['liquid', 0], ['reflections', 1], ['sheen', 2]] as const) {
+      flow.setEffect(effect);
+      const mode = gl.uniform1f.calls.allArgs().filter(([uniform]) =>
+        (uniform as unknown as { name: string }).name === 'effectMode').at(-1)!;
+      expect(mode[1]).toBe(expected);
+      expect(gl.createProgram).toHaveBeenCalledTimes(1);
+      expect(gl.texImage2D.calls.count()).toBe(uploads);
+    }
+  });
+
+  it('paints the two side clocks into the same glass mask with their own smaller bevels', async () => {
+    card.style.cssText = 'width:400px;height:240px;position:relative;--clock-center-y:.32;--side-center-y:.82';
+    const flow = create();
+    for (const [side, value] of [['early', '15:12'], ['late', '15:42']]) {
+      const wrapper = document.createElement('div');
+      wrapper.className = `timeline-side timeline-${side}`;
+      const clock = document.createElement('strong');
+      clock.style.font = '700 18px Arial';
+      clock.textContent = value;
+      wrapper.append(clock);
+      card.append(wrapper);
+    }
+    const paint = spyOn(CanvasRenderingContext2D.prototype, 'fillText').and.callThrough();
+    flow.refreshTypography();
+    await Promise.resolve();
+    const calls = paint.calls.allArgs();
+    expect(calls.map(([glyph]) => glyph).join('')).toBe('15:2715:1215:42');
+    expect(calls[5][2]).toBeGreaterThan(calls[0][2]);
+    expect(calls[10][1]).toBeGreaterThan(calls[5][1]);
+    expect(gl.createProgram).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the glass mask aligned with clocks shifted below the timeline axis', async () => {
+    const paint = spyOn(CanvasRenderingContext2D.prototype, 'fillText').and.callThrough();
+    const flow = create();
+    const baseline = paint.calls.mostRecent().args[2];
+    card.querySelector<HTMLElement>('.result-time-value')!.style.top = '22px';
+    paint.calls.reset();
+    flow.refreshTypography();
+    await Promise.resolve();
+    expect(paint.calls.mostRecent().args[2] - baseline).toBe(22);
+  });
+
+  it('defers collapsed-frame typography until the opening timeline has measurable geometry, then keeps its original glyph positions', async () => {
+    root.style.display = 'block';
+    card.className = 'summary-item result-time-card timeline-card';
+    card.style.cssText = 'position:relative;width:400px;height:240px;border:0;padding:54px 0 18px;display:grid;grid-template-columns:26% 48% 26%;grid-template-rows:18px auto;row-gap:10px;align-content:start';
+    const flow = create();
+    await Promise.resolve();
+    const paint = spyOn(CanvasRenderingContext2D.prototype, 'fillText').and.callThrough();
+    flow.refreshTypography();
+    await Promise.resolve();
+    const expected = paint.calls.allArgs().map(([glyph, x, y]) => ({ glyph, x, y }));
+    expect(expected.length).toBe(5);
+    const uploads = gl.texImage2D.calls.count();
+    paint.calls.reset();
+    root.style.transform = 'scaleY(0)';
+    flow.refreshTypography();
+    await Promise.resolve();
+    expect(paint).withContext('A zero-height animation frame must not replace timeline positions with fallback centres').not.toHaveBeenCalled();
+    expect(gl.texImage2D.calls.count()).toBe(uploads);
+    root.style.transform = 'scaleY(.4)';
+    advanceFrame();
+    expect(paint.calls.count()).toBe(expected.length);
+    paint.calls.allArgs().forEach(([glyph, x, y], index) => {
+      expect(glyph).toBe(expected[index].glyph);
+      expect(x).toBeCloseTo(expected[index].x, 2);
+      expect(y).toBeCloseTo(expected[index].y, 2);
+    });
+    expect(gl.texImage2D.calls.count()).toBe(uploads + 2);
+    paint.calls.reset();
+    root.style.transform = 'none';
+    advanceFrame();
+    expect(paint).withContext('Finishing the expansion must not require another positioning correction').not.toHaveBeenCalled();
   });
 
   it('uses every selected accent in both themes and updates the GPU palette without rebuilding the clock', () => {

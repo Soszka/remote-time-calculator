@@ -45,7 +45,7 @@
 }
 
 .panel.compact-panel {
-  width: min(600px, 100%);
+  width: 100%;
   padding: 0;
   background: transparent;
   backdrop-filter: none;
@@ -151,7 +151,7 @@ label {
   color: #d7dde8;
 }
 
-input {
+input:not([type="range"]) {
   border: none;
   border-radius: 14px;
   background: var(--field-surface);
@@ -163,20 +163,20 @@ input {
     box-shadow 0.2s ease;
 }
 
-input:focus {
+input:not([type="range"]):focus {
   outline: none;
   box-shadow:
     inset 0 0 0 2px var(--accent-solid),
     0 8px 18px var(--accent-input-shadow);
 }
 
-:host.dark-mode input {
+:host.dark-mode input:not([type="range"]) {
   background: var(--field-surface);
   color: var(--mono-text, #f8fafc);
   box-shadow: inset 0 0 0 1px var(--accent-input-inset);
 }
 
-:host.dark-mode input:focus {
+:host.dark-mode input:not([type="range"]):focus {
   box-shadow:
     inset 0 0 0 2px var(--accent-solid),
     0 8px 18px var(--accent-input-shadow);

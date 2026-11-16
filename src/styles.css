@@ -1,4 +1,132 @@
 /* Global baseline */
+/* The settings workspace keeps the real clock visible while preferences change. */
+.calculator-workspace {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  width: min(640px, 100%);
+  min-width: 0;
+}
+.calculator-workspace.showing-result { width: min(600px, 100%); }
+.calculator-workspace.configuring {
+  width: min(1092px, 100%);
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 460px);
+  gap: 32px;
+}
+.calculator-workspace > .panel { grid-column: 1; grid-row: 1; min-width: 0; }
+app-root .panel-header > .settings-button { position: relative; flex-shrink: 0; margin: 0; }
+app-root .settings-orb::before, app-root .settings-orb::after { display: none; }
+.calculator-workspace .config-dialog.config-drawer {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 4;
+  width: 460px;
+  max-width: 100%;
+  max-height: calc(100dvh - 2 * clamp(1.5rem, 5vw, 4rem));
+  padding: 28px;
+  border: 1px solid var(--form-card-rim);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-focus-ring) transparent;
+  overscroll-behavior: contain;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.calculator-workspace.configuring .config-drawer.is-open {
+  display: flex;
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  top: auto;
+  right: auto;
+  width: 100%;
+  align-self: start;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+.config-drawer .dialog-header { min-height: 44px; flex-shrink: 0; padding: 0 0 8px; }
+.config-drawer .config-form {
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-focus-ring) transparent;
+  scrollbar-gutter: stable;
+  padding: 8px 18px 10px 10px;
+  margin: -8px -10px -10px;
+  overscroll-behavior: contain;
+}
+app-root .config-drawer .title-segment.layout-segment { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.config-drawer .layout-segment button { min-height: 42px; padding-inline: 8px; }
+app-root .config-drawer .accent-picker,
+app-root .config-drawer .favorite-hour-picker { padding: 8px; --config-circle-size: clamp(30px, 10cqi, 44px); --config-circle-gap: clamp(6px, 2cqi, 12px); }
+app-root .config-drawer .accent-picker { grid-template-columns: repeat(6, minmax(0, 1fr)); justify-items: center; }
+.size-config-row .config-label { margin: 0; }
+app-root .config-drawer input.size-range,
+app-root .config-drawer input.size-range:focus {
+  --range-track: color-mix(in srgb, var(--accent-solid) 16%, #8c94a4);
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 24px;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.size-range::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--accent-solid) var(--range-progress), var(--range-track) var(--range-progress)); }
+.size-range::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8px; border: 1px solid var(--control-rim); border-radius: 50%; background: var(--control-glass); box-shadow: var(--control-shadow); transition: box-shadow 160ms ease, transform 160ms ease; }
+.size-range::-moz-range-track { height: 4px; border: 0; border-radius: 4px; background: var(--range-track); }
+.size-range::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--accent-solid); }
+.size-range::-moz-range-thumb { width: 20px; height: 20px; border: 1px solid var(--control-rim); border-radius: 50%; background: var(--control-glass); box-shadow: var(--control-shadow); transition: box-shadow 160ms ease, transform 160ms ease; }
+.size-range:hover::-webkit-slider-thumb { box-shadow: var(--control-shadow-hover), 0 0 0 5px var(--accent-control-bg); transform: scale(1.12); }
+.size-range:active::-webkit-slider-thumb { transform: scale(1.2); }
+.size-range:hover::-moz-range-thumb { box-shadow: var(--control-shadow-hover), 0 0 0 5px var(--accent-control-bg); transform: scale(1.12); }
+.size-range:active::-moz-range-thumb { transform: scale(1.2); }
+app-root .config-drawer input.size-range:focus-visible { outline: 2px solid var(--accent-focus-ring); outline-offset: 3px; border-radius: 6px; }
+.config-preview .exit-slider :disabled { opacity: 1; cursor: default; }
+.config-preview .compact-feedback { text-align: center; margin-inline: auto; }
+
+.timeline-card > .result-time-value { position: relative; top: auto; left: auto; transform: none; grid-column: 2; grid-row: 2; align-self: start; }
+.timeline-side { position: relative; z-index: 4; top: auto; transform: none; display: grid; place-items: center; width: 100%; grid-row: 2; align-self: start; text-align: center; color: var(--flow-label); }
+.timeline-side.timeline-early { left: auto; grid-column: 1; }
+.timeline-side.timeline-late { left: auto; grid-column: 3; }
+.timeline-side > strong { display: inline-flex; align-items: baseline; font-family: 'Nunito Glass', 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; font-size: calc(clamp(.85rem, 4.3cqi, 1.5rem) * var(--timeline-side-scale, 1)); font-weight: 700; letter-spacing: -.04em; line-height: 1; white-space: nowrap; }
+.timeline-side .time-glyph { display: block; }
+.timeline-side .time-glyph:last-child { letter-spacing: 0; }
+.timeline-side .time-separator { position: relative; top: var(--time-colon-offset); padding-inline: var(--time-colon-gap); }
+.has-liquid-canvas .timeline-side > strong { color: transparent; }
+.milestone-track { position: relative; z-index: 4; inset: auto; grid-column: 1 / -1; grid-row: 1; justify-self: center; width: 74%; display: flex; align-items: center; gap: 8px; height: 18px; color: var(--flow-label); }
+.milestone-track > i { width: 7px; height: 7px; border: 1.5px solid currentColor; border-radius: 50%; background: var(--flow-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--flow-label) 8%, transparent); }
+.milestone-track > i.main-dot { width: 11px; height: 11px; }
+.milestone-track > span { flex: 1; height: 1px; background: currentColor; opacity: .35; }
+.milestone-track.early-reached > i:first-child,
+.milestone-track.standard-reached > i.main-dot,
+.milestone-track.late-reached > i:last-child { background: currentColor; }
+.summary-line.result-summary.cards-side-by-side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+app-root .summary-line.cards-side-by-side > .result-time-card { min-height: 8.5rem; }
+@media (max-width: 900px) {
+  .calculator-workspace.configuring { width: min(600px, 100%); grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .calculator-workspace.configuring .config-drawer.is-open { grid-column: 1; grid-row: 2; }
+  .calculator-workspace.configuring .config-drawer.is-open { max-height: none; overflow: visible; }
+  .config-drawer .config-form { overflow: visible; scrollbar-gutter: auto; }
+}
+@media (max-width: 420px) {
+  .calculator-workspace .config-dialog.config-drawer { padding: 20px; }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -8,6 +136,7 @@ body {
   background: transparent;
   min-height: 100vh;
 }
+html { scrollbar-gutter: stable; }
 
 button {
   font-family: inherit;
@@ -1390,6 +1519,31 @@ app-root.dark-mode .message-card {
   }
 }
 
+/* Explicit layout geometry takes precedence over theme surface shorthands. */
+app-root .calculator-workspace .panel .highlight-card.compact-highlight {
+  padding: clamp(1.05rem, 3vw, 1.45rem);
+  border-width: 1px;
+  border-style: solid;
+}
+app-root .calculator-workspace .panel .summary-item.result-time-card {
+  padding: 1.75rem .6rem;
+  border-width: 1px;
+  border-style: solid;
+  min-height: 8rem;
+}
+app-root .calculator-workspace .panel .summary-item.timeline-card {
+  padding: 3.4rem 0 1.15rem;
+  min-height: 0;
+  grid-template-columns: 26% 48% 26%;
+  grid-template-rows: 18px auto;
+  row-gap: 10px;
+  align-content: start;
+  align-items: start;
+}
+app-root .calculator-workspace .panel .cards-side-by-side > .summary-item.result-time-card {
+  min-height: 8rem;
+}
+
 @keyframes toastSlideIn {
   from {
     opacity: 0;
@@ -1832,6 +1986,7 @@ app-root.dark-mode .message-card {
   align-items: center;
   gap: 0.6rem;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .work-progress {
@@ -1860,6 +2015,7 @@ app-root.dark-mode .message-card {
   background: conic-gradient(from -90deg, transparent 0 52%, var(--accent-solid) 64%, color-mix(in srgb, var(--accent-gradient-end) 55%, #fff) 80%, var(--accent-gradient-end) 92%, transparent 100%);
   filter: drop-shadow(0 0 7px var(--accent-gradient-end));
   pointer-events: none;
+  animation: progressOrbit 2.4s linear infinite;
 }
 
 .work-progress.in-progress::before { animation: progressOrbit 2.4s linear infinite; }
@@ -1891,9 +2047,6 @@ app-root.dark-mode .work-progress {
   to { transform: rotate(360deg); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .work-progress.in-progress::before { animation: none; }
-}
 
 app-root:not(.dark-mode) .highlight-card {
   background:
@@ -2182,7 +2335,13 @@ app-liquid-backdrop {
   padding-inline: var(--time-colon-gap);
 }
 
-.remaining-time-card .result-time-value { font-size: clamp(1.8rem, 17cqi, 5.9rem); }
+.exit-time-card .result-time-value { font-size: calc(clamp(1.1rem, 20.5cqi, 7.1rem) * var(--time-scale, 1)); }
+.remaining-time-card .result-time-value { font-size: calc(clamp(1rem, 16.7cqi, 5.8rem) * var(--time-scale, 1)); }
+.cards-side-by-side .exit-time-card .result-time-value { font-size: calc(clamp(1.1rem, 30cqi, 7.1rem) * var(--time-scale, 1)); }
+.cards-side-by-side .remaining-time-card .result-time-value { font-size: calc(clamp(1rem, 20cqi, 5.8rem) * var(--time-scale, 1)); }
+.result-time-card.timeline-card .result-time-value { font-size: calc(clamp(1rem, 13cqi, 4.5rem) * var(--time-scale, 1)); }
+.result-time-card.remaining-time-card.timeline-card .result-time-value { font-size: calc(clamp(.8rem, 8.5cqi, 3rem) * var(--time-scale, 1)); }
+.summary-item.result-time-card { container-type: inline-size; }
 app-root.dark-mode .result-time-label { color: var(--flow-label); text-shadow: 0 1px 3px rgba(0, 8, 15, 0.7); }
 app-root.dark-mode .result-time-value { color: var(--flow-glint); -webkit-text-stroke-color: var(--flow-rim); text-shadow: 0 1px 1px rgba(255, 255, 255, 0.15), 0 2px 3px var(--flow-ink); }
 
@@ -2422,7 +2581,7 @@ app-root:is(.accent-black, .accent-white) .compact-feedback-box {
 app-root:is(.accent-black, .accent-white) :is(h1, h2, label, .config-label, .compact-feedback, .adjustment-title) { color: var(--mono-text); }
 app-root:is(.accent-black, .accent-white) :is(.field-hint, .theme-segment button:not(.active), .title-segment button:not(.active)) { color: var(--mono-muted); }
 app-root:is(.accent-black, .accent-white) .compact-detail { background: var(--control-glass); color: var(--control-ink); border-color: var(--form-card-rim); }
-app-root:is(.accent-black, .accent-white) input:not(.offset-range) { background: var(--mono-input); color: var(--mono-text); border-color: var(--mono-border); }
+app-root:is(.accent-black, .accent-white) input:not(.offset-range):not(.size-range) { background: var(--mono-input); color: var(--mono-text); border-color: var(--mono-border); }
 
 /* Light fields need their own opaque surface and a visible edge inside tinted rows. */
 app-root:not(.dark-mode) {
@@ -2434,7 +2593,7 @@ app-root:not(.dark-mode) {
   --remove-ink: color-mix(in srgb, var(--accent-text) 90%, #17212c);
 }
 
-app-root:not(.dark-mode) input:not(.offset-range) {
+app-root:not(.dark-mode) input:not(.offset-range):not(.size-range) {
   background: var(--field-surface);
   color: var(--field-ink);
 }
@@ -2455,7 +2614,7 @@ app-root.dark-mode.accent-white :is(.break-row, .adjustment-row) input {
   background: linear-gradient(145deg, #151515, #0d0d0d);
 }
 
-app-root:not(.dark-mode) input:not(.offset-range):not(:focus) {
+app-root:not(.dark-mode) input:not(.offset-range):not(.size-range):not(:focus) {
   box-shadow: inset 0 0 0 1px var(--field-rim), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -2699,7 +2858,90 @@ app-root.simple-time-cards .result-time-value {
 }
 app-root.dark-mode.simple-time-cards .result-time-value { color: color-mix(in srgb, var(--control-ink) 90%, transparent); }
 app-root.simple-time-cards .result-time-label { text-shadow: none; }
-app-root.simple-time-cards .work-progress.in-progress::before { animation: none; }
+
+/* Neutral results are an independent choice; settings retain the user's accent. */
+app-root.neutral-time-cards {
+  --neutral-clock: #000;
+  --neutral-label: #4b4b4b;
+  --neutral-surface: #fff;
+  --neutral-dashboard: #fff;
+  --neutral-rim: #dedede;
+  --neutral-hover: #f1f1f1;
+}
+app-root.dark-mode.neutral-time-cards {
+  --neutral-clock: #fff;
+  --neutral-label: #d1d1d1;
+  --neutral-surface: #262626;
+  --neutral-dashboard: #202020;
+  --neutral-rim: #464646;
+  --neutral-hover: #333;
+}
+app-root.simple-time-cards.neutral-time-cards .highlight-card.compact-highlight {
+  background: var(--neutral-dashboard);
+  border-color: var(--neutral-rim);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .14);
+  color: var(--neutral-clock);
+}
+/* The departing view contains separately positioned copies outside the real
+   highlight card. Keep the same neutral treatment on that animation surface. */
+app-root.simple-time-cards.neutral-time-cards :is(.highlight-card, .view-morph-surface) .summary-item.result-time-card {
+  --flow-ink: var(--neutral-surface);
+  --flow-label: var(--neutral-label);
+  background: var(--neutral-surface);
+  border-color: var(--neutral-rim);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .05);
+}
+app-root.simple-time-cards.neutral-time-cards .result-time-value,
+app-root.simple-time-cards.neutral-time-cards .timeline-side > strong {
+  color: var(--neutral-clock);
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .compact-feedback-box {
+  background: var(--neutral-surface);
+  border-color: var(--neutral-rim);
+  box-shadow: none;
+}
+app-root.simple-time-cards.neutral-time-cards .compact-feedback { color: var(--neutral-label); }
+
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) :is(.compact-detail, .edit-button, .offset-button, .offset-orb) {
+  background: var(--neutral-surface);
+  border-color: var(--neutral-rim);
+  box-shadow: none;
+  color: var(--neutral-clock);
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) :is(.edit-button, .offset-button):not(:disabled):hover,
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-control:has(.offset-range:hover) .offset-orb {
+  background: var(--neutral-hover);
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) :is(.edit-button, .offset-button):focus-visible,
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-control:has(.offset-range:focus-visible) .offset-orb {
+  outline: 2px solid var(--neutral-clock);
+  outline-offset: 3px;
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .button-sheen,
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-orb::before,
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-orb::after { display: none; }
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-orb { border-color: var(--neutral-label); }
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-track {
+  background: var(--neutral-rim);
+  border-color: var(--neutral-rim);
+  box-shadow: none;
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-fill {
+  background: var(--neutral-clock);
+  box-shadow: none;
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .offset-label { color: var(--neutral-clock); }
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .work-progress {
+  --progress-center: var(--neutral-surface);
+  background: var(--neutral-rim);
+  box-shadow: none;
+  color: var(--neutral-clock);
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .work-progress::before {
+  background: conic-gradient(from -90deg, transparent 0 52%, var(--neutral-label) 64%, var(--neutral-clock) 88%, transparent 100%);
+  filter: none;
+}
+app-root.simple-time-cards.neutral-time-cards :is(.compact-highlight, .view-morph-surface) .work-progress span { box-shadow: none; }
 
 @media (max-width: 430px) {
   app-root .accent-picker {

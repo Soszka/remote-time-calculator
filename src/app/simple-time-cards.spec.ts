@@ -4,6 +4,7 @@ import { By } from '@angular/platform-browser';
 import { AppComponent } from './app.component';
 import { TIME_COLON_GAP_EM, TIME_COLON_OFFSET_EM } from './time-typography';
 import { PANEL_MOTION } from './panel-motion.directive';
+import { ACCORDION_PHASES, VIEW_MORPH_MS } from './view-morph';
 
 // Render the real app-root tag so the production theme selectors apply.
 @Component({ standalone: true, imports: [AppComponent], template: '<app-root></app-root>' })
@@ -36,6 +37,9 @@ describe('Simple time cards', () => {
     app.openConfig();
     try {
       for (const option of app.accentOptions) {
+        // Start from the same visible groups; selecting Brak below reveals an
+        // extra colour preference that is removed when an effect is re-enabled.
+        app.setCardAnimation('liquid');
         app.setAccentColor(option.value);
         fixture.detectChanges();
         const dialog = fixture.nativeElement.querySelector('.config-dialog') as HTMLElement;
@@ -299,6 +303,195 @@ describe('Simple time cards', () => {
       localStorage.clear();
     }
   });
+
+  it('keeps the complete neutral result monochrome, including its toolbar, moving progress ring and working offset controls', () => {
+    localStorage.clear();
+    spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
+    TestBed.configureTestingModule({ imports: [AppHostComponent] });
+    const fixture = TestBed.createComponent(AppHostComponent);
+    fixture.detectChanges();
+    const app = fixture.debugElement.query(By.directive(AppComponent)).componentInstance as AppComponent;
+    app.setCardAnimation('none');
+    app.setCardAccentEnabled(false);
+    app.form.controls.startTime.setValue('08:00');
+    const root = fixture.nativeElement as HTMLElement;
+    const checkGrey = (css: string, context: string) => {
+      for (const color of css.match(/(?:rgba?|color)\([^)]*\)/g) ?? []) {
+        const { rgb } = channels(color);
+        expect(Math.max(...rgb) - Math.min(...rgb)).withContext(`${context}: ${color}`).toBeLessThan(.005);
+      }
+    };
+    jasmine.clock().install();
+    try {
+      for (const hour of [12, 19]) {
+        jasmine.clock().mockDate(new Date(2026, 10, 16, hour));
+        app.calculate(false);
+        for (const dark of [false, true]) {
+          app.setDarkMode(dark);
+          for (const accent of app.accentOptions) {
+            app.setAccentColor(accent.value);
+            for (const layout of ['slider', 'timeline', 'standard', 'sideBySide'] as const) {
+              app.setTimeDisplayMode(layout);
+              fixture.detectChanges();
+              const context = `${hour}/${dark}/${accent.value}/${layout}`;
+              for (const tool of Array.from(root.querySelectorAll('.compact-detail, .edit-button, .work-progress, .work-progress span, .offset-button, .offset-orb, .offset-track, .offset-fill, .offset-label'))) {
+                const css = getComputedStyle(tool);
+                for (const property of [css.color, css.backgroundImage, css.backgroundColor, css.borderColor, css.boxShadow]) checkGrey(property, context);
+                expect(css.boxShadow).withContext(`${context}: no decorative glow`).toBe('none');
+              }
+              const orbit = getComputedStyle(root.querySelector('.work-progress')!, '::before');
+              checkGrey(orbit.backgroundImage, context);
+              expect(orbit.filter).toBe('none');
+              expect(orbit.animationName).toBe('progressOrbit');
+              expect(orbit.animationIterationCount).toBe('infinite');
+              for (const sheen of Array.from(root.querySelectorAll('.compact-highlight .button-sheen'))) {
+                expect(getComputedStyle(sheen).display).toBe('none');
+              }
+            }
+          }
+        }
+      }
+      jasmine.clock().mockDate(new Date(2026, 10, 16, 12));
+      app.calculate(false);
+      app.setTimeDisplayMode('slider');
+      fixture.detectChanges();
+      const range = root.querySelector<HTMLInputElement>('#exit-offset')!;
+      range.value = '-6';
+      range.dispatchEvent(new Event('input'));
+      expect(app.result()?.endTime).toBe('16:09');
+      root.querySelectorAll<HTMLButtonElement>('.offset-button')[1].click();
+      fixture.detectChanges();
+      expect(root.querySelector('.exit-time-card > strong')!.textContent).toBe('16:10');
+      expect(root.querySelector('.remaining-time-card > strong')!.textContent).toBe('04:10:00');
+      jasmine.clock().tick(1000);
+      fixture.detectChanges();
+      expect(root.querySelector('.remaining-time-card > strong')!.textContent).toBe('04:09:59');
+      root.querySelector<HTMLButtonElement>('.edit-button')!.click();
+      fixture.detectChanges();
+      expect(root.querySelector<HTMLInputElement>('#start-time')!.value).toBe('08:00');
+    } finally { fixture.destroy(); jasmine.clock().uninstall(); localStorage.clear(); }
+  });
+
+  it('preserves the entire neutral appearance throughout the outgoing edit animation in every theme, accent and layout', fakeAsync(() => {
+    localStorage.clear();
+    spyOn(window, 'matchMedia').and.returnValue({ matches: false } as MediaQueryList);
+    spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
+    TestBed.configureTestingModule({ imports: [AppHostComponent] });
+    const fixture = TestBed.createComponent(AppHostComponent);
+    fixture.detectChanges();
+    const app = fixture.debugElement.query(By.directive(AppComponent)).componentInstance as AppComponent;
+    const root = fixture.nativeElement as HTMLElement;
+    app.setCardAnimation('none');
+    app.setCardAccentEnabled(false);
+    app.form.controls.startTime.setValue('08:00');
+    const surfaces = '.highlight-card, .result-time-card, .compact-detail, .edit-button, .offset-button, .offset-orb, .offset-track, .offset-fill, .work-progress, .work-progress span, .compact-feedback-box';
+    const text = '.result-time-label, .result-time-value, .timeline-side > strong, .compact-feedback, .compact-detail, .edit-button, .offset-button, .offset-label, .work-progress span';
+    const appearance = (view: Element) => ({
+      surfaces: Array.from(view.querySelectorAll(surfaces), element => {
+        const style = getComputedStyle(element);
+        return [element.className, style.backgroundColor, style.backgroundImage,
+          style.borderTopStyle === 'none' ? null : style.borderTopColor, style.boxShadow, style.filter];
+      }),
+      text: Array.from(view.querySelectorAll(text), element => [element.className, getComputedStyle(element).color]),
+      orbit: (() => {
+        const style = getComputedStyle(view.querySelector('.work-progress')!, '::before');
+        return [style.backgroundImage, style.filter];
+      })(),
+      sheen: Array.from(view.querySelectorAll('.button-sheen'), element => getComputedStyle(element).display),
+    });
+    try {
+      for (const dark of [false, true]) {
+        app.setDarkMode(dark);
+        for (const accent of app.accentOptions) {
+          app.setAccentColor(accent.value);
+          for (const layout of ['slider', 'timeline', 'standard', 'sideBySide'] as const) {
+            app.setTimeDisplayMode(layout);
+            app.calculate(false);
+            fixture.detectChanges();
+            const expected = appearance(root.querySelector('.result-block')!);
+            root.querySelector<HTMLButtonElement>('.edit-button')!.click();
+            fixture.detectChanges();
+            const outgoing = root.querySelector('.view-morph-overlay')!;
+            expect(outgoing).not.toBeNull();
+            const animations = outgoing.getAnimations({ subtree: true });
+            animations.forEach(animation => animation.pause());
+            for (const time of [0, ACCORDION_PHASES.collapse / 2, ACCORDION_PHASES.collapse - 1]) {
+              animations.forEach(animation => animation.currentTime = time);
+              expect(appearance(outgoing)).withContext(`${dark}/${accent.value}/${layout}/${time}: no accent flash while the result folds`).toEqual(expected);
+            }
+            tick(VIEW_MORPH_MS);
+            fixture.detectChanges();
+            expect(root.querySelector('.view-morph-overlay')).toBeNull();
+            expect(root.querySelector<HTMLInputElement>('#start-time')!.value).toBe('08:00');
+            expect(app.isAccentSelected(accent.value)).toBeTrue();
+          }
+        }
+      }
+    } finally { fixture.destroy(); localStorage.clear(); }
+  }));
+
+  it('keeps clock glyphs, timeline milestones and canvases fixed within the single outgoing fold in every layout', fakeAsync(() => {
+    localStorage.clear();
+    spyOn(window, 'matchMedia').and.returnValue({ matches: false } as MediaQueryList);
+    spyOn(HTMLCanvasElement.prototype, 'getContext').and.returnValue(null);
+    TestBed.configureTestingModule({ imports: [AppHostComponent] });
+    const fixture = TestBed.createComponent(AppHostComponent);
+    fixture.detectChanges();
+    const app = fixture.debugElement.query(By.directive(AppComponent)).componentInstance as AppComponent;
+    const root = fixture.nativeElement as HTMLElement;
+    app.form.controls.startTime.setValue('08:00');
+    app.setCardAccentEnabled(false);
+    const nodes = (view: Element) => Array.from(view.querySelectorAll('.result-time-card')).flatMap(card => [card,
+      ...Array.from(card.querySelectorAll('.result-time-value, .time-glyph, .timeline-side, .timeline-side > strong, .milestone-track, .milestone-track > *, .result-time-label, canvas'))]);
+    try {
+      for (const dark of [false, true]) {
+        app.setDarkMode(dark);
+        for (const effect of ['none', 'liquid'] as const) {
+          app.setCardAnimation(effect);
+          for (const layout of ['timeline', 'slider', 'standard', 'sideBySide'] as const) {
+            app.setTimeDisplayMode(layout);
+            for (const size of [70, 125]) {
+              app.setTimeScale('timeScale', { target: { value: String(size) } } as unknown as Event);
+              app.setTimeScale('timelineSideScale', { target: { value: String(195 - size) } } as unknown as Event);
+              app.calculate(false);
+              fixture.detectChanges();
+              const expected = nodes(root.querySelector('.result-block')!).map(node => ({
+                box: node.getBoundingClientRect(),
+                font: node.matches('strong, .time-glyph, .result-time-label') ? getComputedStyle(node).fontSize : null,
+              }));
+              const panel = root.querySelector('.panel')!.getBoundingClientRect();
+              const centre = panel.top + panel.height / 2;
+              root.querySelector<HTMLButtonElement>('.edit-button')!.click();
+              fixture.detectChanges();
+              const outgoing = root.querySelector('.view-morph-overlay')!;
+              const surface = outgoing.querySelector('.view-morph-surface')!;
+              const animations = outgoing.getAnimations({ subtree: true });
+              animations.forEach(animation => animation.pause());
+              const copies = nodes(outgoing);
+              expect(copies.length).toBe(expected.length);
+              for (const time of [0, ACCORDION_PHASES.collapse / 2, ACCORDION_PHASES.collapse - 1]) {
+                animations.forEach(animation => animation.currentTime = time);
+                const scaleY = new DOMMatrix(getComputedStyle(surface).transform).d;
+                copies.forEach((copy, index) => {
+                  const actual = copy.getBoundingClientRect();
+                  const { box, font } = expected[index];
+                  const context = `${dark}/${effect}/${layout}/${size}/${time}: ${copy.className}`;
+                  expect(actual.x).withContext(context + ' x').toBeCloseTo(box.x, 0);
+                  expect(actual.y).withContext(context + ' y').toBeCloseTo(centre + (box.y - centre) * scaleY, 0);
+                  expect(actual.width).withContext(context + ' width').toBeCloseTo(box.width, 0);
+                  expect(actual.height).withContext(context + ' height').toBeCloseTo(box.height * scaleY, 0);
+                  if (font) expect(getComputedStyle(copy).fontSize).withContext(context + ' font').toBe(font);
+                });
+              }
+              tick(VIEW_MORPH_MS);
+              fixture.detectChanges();
+              expect(root.querySelector('.view-morph-overlay')).toBeNull();
+            }
+          }
+        }
+      }
+    } finally { fixture.destroy(); localStorage.clear(); }
+  }));
 
   it('centres the colon optically in the actual numeral font and preserves readable, responsive text when Flow is off', async () => {
     localStorage.clear();

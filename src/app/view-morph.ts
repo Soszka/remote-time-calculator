@@ -44,6 +44,7 @@ export class ViewMorph {
     const outgoing = sources.map(source => {
       const surface = source === panel || source.classList.contains('highlight-card');
       const clone = source.cloneNode(!surface) as HTMLElement;
+      if (source.classList.contains('result-time-card')) this.freezeTimeCardLayout(source, clone);
       // Visual copies have neither duplicate IDs nor interactive/accessibility targets.
       for (const node of [clone, ...Array.from(clone.querySelectorAll<HTMLElement>('*'))]) {
         node.removeAttribute('id');
@@ -68,6 +69,23 @@ export class ViewMorph {
       return { node: clone, bounds: bounds(source) };
     });
     return { panel: panelBounds, outgoing };
+  }
+
+  private freezeTimeCardLayout(source: HTMLElement, clone: HTMLElement): void {
+    // The overlay places cards outside the workspace and summary grid. Resolve
+    // their layout before moving them, so ancestor selectors, container units
+    // and inherited size preferences cannot rearrange the departing clocks.
+    const layout = getComputedStyle(source);
+    for (const property of [
+      'display', 'padding', 'border-width', 'min-height', 'grid-template-columns',
+      'grid-template-rows', 'row-gap', 'column-gap', 'align-content', 'align-items',
+      'justify-content', 'justify-items',
+    ]) clone.style.setProperty(property, layout.getPropertyValue(property));
+    const selector = '.result-time-value, .timeline-side > strong, .result-time-label';
+    const originals = Array.from(source.querySelectorAll<HTMLElement>(selector));
+    clone.querySelectorAll<HTMLElement>(selector).forEach((clock, index) => {
+      clock.style.fontSize = getComputedStyle(originals[index]).fontSize;
+    });
   }
 
   play(snapshot: ViewMorphSnapshot | null): void {
